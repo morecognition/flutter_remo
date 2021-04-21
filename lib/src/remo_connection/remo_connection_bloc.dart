@@ -138,5 +138,5 @@ class RemoConnectionBloc
   }
 
   /// All the actual bluetooth actions are handled here.
-  final FlutterBluetooth _bluetooth = FlutterBluetooth();
+  final Bluetooth _bluetooth = Bluetooth();
 }

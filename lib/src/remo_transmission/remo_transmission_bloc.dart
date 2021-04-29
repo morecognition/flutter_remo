@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_bluetooth/flutter_bluetooth.dart';
 import 'package:meta/meta.dart';
-import 'package:path_provider/path_provider.dart';
 
 part 'remo_transmission_event.dart';
 part 'remo_transmission_state.dart';
@@ -27,18 +25,8 @@ class RemoTransmissionBloc
   }
 
   Stream<RemoTransmissionState> _startTransmission() async* {
-    String filename = DateTime.now().toString() + ".txt";
-    Directory directory = await getApplicationDocumentsDirectory();
-
-    String filepath = directory.path + filename;
-
-    File file = new File(filepath);
-    print(filepath);
     yield TransmissionStarted();
-    remoDataStream = _bluetooth.startTransmission().listen((remoData) {
-      file.writeAsString(remoData.toString(),
-          mode: FileMode.append, flush: true);
-    });
+    remoDataStream = _bluetooth.startTransmission().listen((remoData) {});
   }
 
   Stream<RemoTransmissionState> _stopTransmission() async* {

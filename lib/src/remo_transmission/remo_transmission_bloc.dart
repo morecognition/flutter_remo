@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_bluetooth/flutter_bluetooth.dart';
+import 'package:flutter_remo/src/bluetooth/bluetooth.dart';
 import 'package:meta/meta.dart';
 
 part 'remo_transmission_event.dart';

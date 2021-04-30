@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_bluetooth/flutter_bluetooth.dart';
+
+import 'bluetooth.dart';
 
 part 'bluetooth_event.dart';
 part 'bluetooth_state.dart';

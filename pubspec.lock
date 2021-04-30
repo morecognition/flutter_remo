@@ -69,17 +69,8 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "7.0.0"
-  flutter_bluetooth:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "7ab1bb705484e7926c40bd2631c2acab38730ff8"
-      url: "git@gitlab.com:artificial-physiology/flutter_bluetooth.git"
-    source: git
-    version: "0.0.1"
   flutter_bluetooth_serial:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: flutter_bluetooth_serial
       url: "https://pub.dartlang.org"

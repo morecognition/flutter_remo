@@ -11,9 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_bluetooth:
-    git: git@gitlab.com:artificial-physiology/flutter_bluetooth.git
   bloc: ^7.0.0
+  flutter_bluetooth_serial: ^0.2.2
   flutter_bloc: ^7.0.0
 
 dev_dependencies:

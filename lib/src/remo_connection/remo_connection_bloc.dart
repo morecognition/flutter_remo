@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:flutter_remo/src/bluetooth/bluetooth.dart';
 
 part 'remo_connection_event.dart';
 part 'remo_connection_state.dart';

@@ -26,16 +26,20 @@ class RemoTransmissionBloc
 
   Stream<RemoTransmissionState> _startTransmission() async* {
     yield TransmissionStarted();
-    remoDataStream = _bluetooth.startTransmission().listen((remoData) {});
+    remoDataStream = _bluetooth.startTransmission().listen((remoData) {
+      _buffer.writeAll(remoData);
+    });
   }
 
   Stream<RemoTransmissionState> _stopTransmission() async* {
     yield StoppingTransmission();
     remoDataStream.cancel();
     _bluetooth.stopTransmission();
+    yield NewDataReceived(_buffer.toString());
     yield RemoTransmissionInitial();
   }
 
+  StringBuffer _buffer = StringBuffer();
   StreamSubscription<Uint8List> remoDataStream;
 
   /// All the actual bluetooth actions are handled here.

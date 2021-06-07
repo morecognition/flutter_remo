@@ -7,9 +7,9 @@ class RemoTransmissionInitial extends RemoTransmissionState {}
 
 class TransmissionStarted extends RemoTransmissionState {}
 
+class StoppingTransmission extends RemoTransmissionState {}
+
 class NewDataReceived extends RemoTransmissionState {
   NewDataReceived(this.data);
   final String data;
 }
-
-class StoppingTransmission extends RemoTransmissionState {}

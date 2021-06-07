@@ -36,7 +36,6 @@ class RemoTransmissionBloc
     remoDataStream.cancel();
     _bluetooth.stopTransmission();
     yield NewDataReceived(_buffer.toString());
-    yield RemoTransmissionInitial();
   }
 
   StringBuffer _buffer = StringBuffer();

@@ -50,10 +50,10 @@ class BluetoothSerial implements Bluetooth {
         }
       });
 
+      startRemoTransmission();
       connectionStatesController.add(ConnectionStates.connected);
     });
     connectionStatesController.add(ConnectionStates.connecting);
-    startRemoTransmission();
     return statesStream;
   }
 

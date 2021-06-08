@@ -8,8 +8,8 @@ abstract class Bluetooth {
   Stream<DeviceInfos> startDiscovery();
   Stream<ConnectionStates> startConnection();
   Stream<ConnectionStates> startDisconnection();
-  Stream<Uint8List> startTransmission();
-  void stopTransmission();
+  void startTransmission();
+  String stopTransmission();
 
   factory Bluetooth() {
     return BluetoothSerial();

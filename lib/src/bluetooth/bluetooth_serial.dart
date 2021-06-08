@@ -39,41 +39,25 @@ class BluetoothSerial implements Bluetooth {
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
 
     // Init data stream.
-    remoOutputController = StreamController<Uint8List>();
+    //remoOutputController = StreamController<Uint8List>();
 
     BluetoothConnection.toAddress(selectedDeviceInfos.address)
         .then((connection) {
       _connectedDevice = connection;
       _connectedDevice.input.listen((data) {
-        remoOutputController.add(data);
+        if (shouldWriteData) {
+          _buffer.write(data);
+        }
       });
 
       connectionStatesController.add(ConnectionStates.connected);
     });
     connectionStatesController.add(ConnectionStates.connecting);
+    startRemoTransmission();
     return statesStream;
   }
 
-  @override
-  Stream<ConnectionStates> startDisconnection() {
-    if (selectedDeviceInfos == null) {
-      throw ArgumentError();
-    }
-    // Init stream.
-    connectionStatesController = StreamController<ConnectionStates>();
-    Stream<ConnectionStates> statesStream = connectionStatesController.stream;
-
-    _connectedDevice.finish().then((value) {
-      _connectedDevice.dispose();
-      connectionStatesController.add(ConnectionStates.disconnected);
-    });
-
-    connectionStatesController.add(ConnectionStates.disconnecting);
-    return statesStream;
-  }
-
-  @override
-  Stream<Uint8List> startTransmission() {
+  void startRemoTransmission() {
     // Contains ASCII codes Remo firmware expects.
     Uint8List message = Uint8List.fromList([
       65, // A
@@ -99,13 +83,36 @@ class BluetoothSerial implements Bluetooth {
       10, // LF
     ]);
     _connectedDevice.output.add(message2);
-
-    return remoOutputController.stream;
   }
 
   @override
-  void stopTransmission() {
-    // TODO
+  Stream<ConnectionStates> startDisconnection() {
+    if (selectedDeviceInfos == null) {
+      throw ArgumentError();
+    }
+    // Init stream.
+    connectionStatesController = StreamController<ConnectionStates>();
+    Stream<ConnectionStates> statesStream = connectionStatesController.stream;
+
+    _connectedDevice.finish().then((value) {
+      _connectedDevice.dispose();
+      connectionStatesController.add(ConnectionStates.disconnected);
+    });
+
+    connectionStatesController.add(ConnectionStates.disconnecting);
+    return statesStream;
+  }
+
+  @override
+  void startTransmission() {
+    _buffer.clear();
+    shouldWriteData = true;
+  }
+
+  @override
+  String stopTransmission() {
+    shouldWriteData = false;
+    return _buffer.toString();
   }
 
   static final BluetoothSerial _singleton = BluetoothSerial._internal();
@@ -133,5 +140,8 @@ class BluetoothSerial implements Bluetooth {
   StreamController<ConnectionStates> connectionStatesController;
 
   /// Data coming from the device will be given through this stream.
-  StreamController<Uint8List> remoOutputController;
+  //StreamController<Uint8List> remoOutputController;
+
+  StringBuffer _buffer = StringBuffer();
+  bool shouldWriteData = false;
 }

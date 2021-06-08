@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/src/bluetooth/bluetooth.dart';
@@ -25,21 +24,17 @@ class RemoTransmissionBloc
   }
 
   Stream<RemoTransmissionState> _startTransmission() async* {
+    _bluetooth.startTransmission();
     yield TransmissionStarted();
-    remoDataStream = _bluetooth.startTransmission().listen((remoData) {
-      _buffer.writeAll(remoData);
-    });
   }
 
   Stream<RemoTransmissionState> _stopTransmission() async* {
     yield StoppingTransmission();
-    remoDataStream.cancel();
-    _bluetooth.stopTransmission();
-    yield NewDataReceived(_buffer.toString());
+    String data = _bluetooth.stopTransmission();
+    yield NewDataReceived(data);
   }
 
-  StringBuffer _buffer = StringBuffer();
-  StreamSubscription<Uint8List> remoDataStream;
+  //StreamSubscription<Uint8List> remoDataStream;
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();

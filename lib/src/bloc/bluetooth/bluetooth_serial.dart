@@ -14,12 +14,12 @@ class BluetoothSerial implements Bluetooth {
 
     _bluetoothSerial.startDiscovery().listen((result) {
       // For some reason the name of some devices can be null or empty. Better to avoid those edge cases to prevent segfault.
-      if (result.device.name != null && result.device.address != null) {
+      if (result.device!.name != null && result.device!.address != null) {
         _devices.add(result);
         infoStreamController.add(
           DeviceInfos(
-            result.device.name,
-            result.device.address,
+            result.device!.name,
+            result.device!.address,
           ),
         );
       }
@@ -41,10 +41,10 @@ class BluetoothSerial implements Bluetooth {
     // Init data stream.
     //remoOutputController = StreamController<Uint8List>();
 
-    BluetoothConnection.toAddress(selectedDeviceInfos.address)
+    BluetoothConnection.toAddress(selectedDeviceInfos!.address)
         .then((connection) {
       _connectedDevice = connection;
-      _connectedDevice.input.listen((data) {
+      _connectedDevice.input!.listen((data) {
         if (shouldWriteData) {
           _buffer.write(data);
         }
@@ -124,9 +124,9 @@ class BluetoothSerial implements Bluetooth {
   BluetoothSerial._internal();
 
   @override
-  DeviceInfos selectedDeviceInfos;
+  DeviceInfos? selectedDeviceInfos;
 
-  BluetoothConnection _connectedDevice;
+  late BluetoothConnection _connectedDevice;
 
   FlutterBluetoothSerial _bluetoothSerial = FlutterBluetoothSerial.instance;
 
@@ -134,10 +134,10 @@ class BluetoothSerial implements Bluetooth {
   List<BluetoothDiscoveryResult> _devices = <BluetoothDiscoveryResult>[];
 
   /// Names of the discovered devices will be given through this stream.
-  StreamController<DeviceInfos> infoStreamController;
+  late StreamController<DeviceInfos> infoStreamController;
 
   /// Updates on the connection status will be given through this stream.
-  StreamController<ConnectionStates> connectionStatesController;
+  late StreamController<ConnectionStates> connectionStatesController;
 
   /// Data coming from the device will be given through this stream.
   //StreamController<Uint8List> remoOutputController;

@@ -44,10 +44,10 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
   BluetoothBloc() : super(BluetoothInitial());
 
   /// The list of devices discovered so far.
-  List<String> _deviceNames = <String>[];
+  List<String?> _deviceNames = <String?>[];
 
   /// The list of devices discovered so far.
-  List<String> _deviceAddresses = <String>[];
+  List<String?> _deviceAddresses = <String?>[];
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();

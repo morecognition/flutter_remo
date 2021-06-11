@@ -7,7 +7,7 @@ packages:
       name: async
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.5.0"
+    version: "2.6.1"
   bloc:
     dependency: "direct main"
     description:
@@ -68,14 +68,16 @@ packages:
       name: flutter_bloc
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "7.0.0"
+    version: "7.0.1"
   flutter_bluetooth_serial:
     dependency: "direct main"
     description:
-      name: flutter_bluetooth_serial
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.2.2"
+      path: "."
+      ref: nullable
+      resolved-ref: "4a0b6f819fa8da360aa844b366b7fefaf3a3e922"
+      url: "git://github.com/kechankrisna/flutter_bluetooth_serial"
+    source: git
+    version: "1.0.0"
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -115,21 +117,21 @@ packages:
       name: permission_handler
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "5.1.0+2"
+    version: "8.1.0"
   permission_handler_platform_interface:
     dependency: transitive
     description:
       name: permission_handler_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.2"
+    version: "3.6.0"
   plugin_platform_interface:
     dependency: transitive
     description:
       name: plugin_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.3"
+    version: "2.0.0"
   provider:
     dependency: transitive
     description:
@@ -148,7 +150,7 @@ packages:
       name: source_span
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.8.0"
+    version: "1.8.1"
   stack_trace:
     dependency: transitive
     description:
@@ -183,7 +185,7 @@ packages:
       name: test_api
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.2.19"
+    version: "0.3.0"
   typed_data:
     dependency: transitive
     description:
@@ -199,5 +201,5 @@ packages:
     source: hosted
     version: "2.1.0"
 sdks:
-  dart: ">=2.12.0-0.0 <3.0.0"
+  dart: ">=2.12.0 <3.0.0"
   flutter: ">=2.0.5"

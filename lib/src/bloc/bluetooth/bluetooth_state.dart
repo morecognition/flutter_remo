@@ -13,8 +13,8 @@ class DiscoveringDevices extends BluetoothState {}
 /// Some or all the devices have been discovered.
 class DiscoveredDevices extends BluetoothState {
   DiscoveredDevices(this.deviceNames, this.deviceAddresses);
-  List<String> deviceNames;
-  List<String> deviceAddresses;
+  List<String?> deviceNames;
+  List<String?> deviceAddresses;
 }
 
 /// Unsuccessful discovery of devices.

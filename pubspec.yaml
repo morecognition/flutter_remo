@@ -5,16 +5,19 @@ author: null
 homepage: null
 publish_to: none
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: '>=2.12.0 <3.0.0'
   flutter: ">=2.0.5"
 
 dependencies:
   flutter:
     sdk: flutter
   bloc: ^7.0.0
-  flutter_bluetooth_serial: ^0.2.2
-  flutter_bloc: ^7.0.0
-  permission_handler: ^5.1.0
+  flutter_bluetooth_serial:
+    git:
+      url: git://github.com/kechankrisna/flutter_bluetooth_serial
+      ref: nullable
+  flutter_bloc: ^7.0.1
+  permission_handler: ^8.1.0
 
 dev_dependencies:
   flutter_test:

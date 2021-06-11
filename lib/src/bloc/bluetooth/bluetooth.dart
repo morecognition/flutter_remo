@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'bluetooth_serial.dart';
 
@@ -15,14 +14,14 @@ abstract class Bluetooth {
     return BluetoothSerial();
   }
 
-  DeviceInfos selectedDeviceInfos;
+  DeviceInfos? selectedDeviceInfos;
 }
 
 /// Information related to a specific bluetooth device.
 class DeviceInfos {
   DeviceInfos(this.name, this.address);
-  String name;
-  String address;
+  String? name;
+  String? address;
 }
 
 /// The various states a connection with a device can be in.

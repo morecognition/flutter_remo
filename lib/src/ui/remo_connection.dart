@@ -145,7 +145,7 @@ class _BluetoothState extends State<_BluetoothStep> {
   Widget build(BuildContext context) {
     return BlocBuilder<BluetoothBloc, BluetoothState>(
       builder: (context, state) {
-        Widget _widget;
+        late Widget _widget;
         if (state is DiscoveredDevices) {
           _widget = RefreshIndicator(
             onRefresh: () async {
@@ -158,8 +158,8 @@ class _BluetoothState extends State<_BluetoothStep> {
                 state.deviceNames.length,
                 (index) {
                   return ListTile(
-                    title: Text(state.deviceNames[index]),
-                    subtitle: Text(state.deviceAddresses[index]),
+                    title: Text(state.deviceNames[index]!),
+                    subtitle: Text(state.deviceAddresses[index]!),
                     onTap: () {
                       // When the text button is pressed, tell the block which device it has to connect to.
                       BlocProvider.of<RemoConnectionBloc>(context).add(
@@ -225,11 +225,11 @@ class _ConnectRemoStep extends StatelessWidget {
         Image.asset('assets/wear_remo.png'),
         BlocBuilder<RemoConnectionBloc, RemoConnectionState>(
           builder: (context, state) {
-            Widget widget;
+            late Widget widget;
             if (state is Connected) {
               widget = Column(
                 children: [
-                  Text(state.deviceName),
+                  Text(state.deviceName!),
                   TextButton(
                     style: TextButton.styleFrom(
                         backgroundColor: Theme.of(context).accentColor),
@@ -244,7 +244,7 @@ class _ConnectRemoStep extends StatelessWidget {
             } else if (state is Disconnected) {
               widget = Column(
                 children: [
-                  Text(state.deviceName),
+                  Text(state.deviceName!),
                   FlatButton(
                     color: Theme.of(context).accentColor,
                     onPressed: () {
@@ -258,7 +258,7 @@ class _ConnectRemoStep extends StatelessWidget {
             } else if (state is Connecting || state is Disconnecting) {
               widget = Column(
                 children: [
-                  Text(state.deviceName),
+                  Text(state.deviceName!),
                   CircularProgressIndicator(),
                 ],
               );

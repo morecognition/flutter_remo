@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_remo/src/bluetooth/bluetooth.dart';
+import 'package:flutter_remo/src/bloc/bluetooth/bluetooth.dart';
 
 part 'remo_connection_event.dart';
 part 'remo_connection_state.dart';
@@ -29,40 +29,40 @@ class RemoConnectionBloc
   /// Connects to a specific devices. The name is given by the select device event.
   Stream<RemoConnectionState> _startConnecting(OnConnectDevice event) async* {
     yield Connecting(
-      _bluetooth.selectedDeviceInfos.name,
-      _bluetooth.selectedDeviceInfos.address,
+      _bluetooth.selectedDeviceInfos!.name,
+      _bluetooth.selectedDeviceInfos!.address,
     );
     try {
       await for (ConnectionStates state in _bluetooth.startConnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
             yield Disconnected(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.connected:
             yield Connected(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.connecting:
             yield Connecting(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.disconnecting:
             Disconnecting(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.error:
             yield ConnectionError(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
         }
@@ -70,8 +70,8 @@ class RemoConnectionBloc
     } on Exception {
       // TODO: check what specific exceptions can occur.
       yield ConnectionError(
-        _bluetooth.selectedDeviceInfos.name,
-        _bluetooth.selectedDeviceInfos.address,
+        _bluetooth.selectedDeviceInfos!.name,
+        _bluetooth.selectedDeviceInfos!.address,
       );
     }
   }
@@ -80,48 +80,48 @@ class RemoConnectionBloc
   Stream<RemoConnectionState> _startDisconnecting(
       OnDisconnectDevice event) async* {
     yield Disconnecting(
-      _bluetooth.selectedDeviceInfos.name,
-      _bluetooth.selectedDeviceInfos.address,
+      _bluetooth.selectedDeviceInfos!.name,
+      _bluetooth.selectedDeviceInfos!.address,
     );
     try {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
             yield Disconnected(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.connected:
             yield Connected(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.connecting:
             yield Connecting(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.disconnecting:
             Disconnecting(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
           case ConnectionStates.error:
             yield ConnectionError(
-              _bluetooth.selectedDeviceInfos.name,
-              _bluetooth.selectedDeviceInfos.address,
+              _bluetooth.selectedDeviceInfos!.name,
+              _bluetooth.selectedDeviceInfos!.address,
             );
             break;
         }
       }
     } on ArgumentError {
       yield ConnectionError(
-        _bluetooth.selectedDeviceInfos.name,
-        _bluetooth.selectedDeviceInfos.address,
+        _bluetooth.selectedDeviceInfos!.name,
+        _bluetooth.selectedDeviceInfos!.address,
       );
     }
   }

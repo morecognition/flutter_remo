@@ -126,7 +126,10 @@ class _WearRemoStep extends StatelessWidget {
         Text("Wear Remo and turn it on"),
         Container(
           padding: EdgeInsets.all(10),
-          child: Image.asset('assets/wear_remo.png'),
+          child: Image.asset(
+            'assets/wear_remo.png',
+            package: 'flutter_remo',
+          ),
         ),
       ],
     );
@@ -222,7 +225,10 @@ class _ConnectRemoStep extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset('assets/wear_remo.png'),
+        Image.asset(
+          'assets/wear_remo.png',
+          package: 'flutter_remo',
+        ),
         BlocBuilder<RemoConnectionBloc, RemoConnectionState>(
           builder: (context, state) {
             late Widget widget;
@@ -278,7 +284,10 @@ class _TurnOnBluetoothStep extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text('Turn on bluetooth on your device'),
-        Image.asset('assets/bluetooth.png'),
+        Image.asset(
+          'assets/bluetooth.png',
+          package: 'flutter_remo',
+        ),
       ],
     );
   }

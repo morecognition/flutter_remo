@@ -9,6 +9,6 @@ class OnStartDiscovery extends BluetoothEvent {}
 /// Event used internally to notif the discovery of devices.
 class OnDiscoveredDevices extends BluetoothEvent {
   OnDiscoveredDevices(this.deviceNames, this.deviceAddresses);
-  List<String?> deviceNames;
-  List<String?> deviceAddresses;
+  List<String> deviceNames;
+  List<String> deviceAddresses;
 }

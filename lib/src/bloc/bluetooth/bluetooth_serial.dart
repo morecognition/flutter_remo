@@ -18,8 +18,8 @@ class BluetoothSerial implements Bluetooth {
         _devices.add(result);
         infoStreamController.add(
           DeviceInfos(
-            result.device!.name,
-            result.device!.address,
+            result.device!.name!,
+            result.device!.address!,
           ),
         );
       }
@@ -29,11 +29,7 @@ class BluetoothSerial implements Bluetooth {
   }
 
   @override
-  Stream<ConnectionStates> startConnection() {
-    if (selectedDeviceInfos == null) {
-      throw ArgumentError();
-    }
-
+  Stream<ConnectionStates> startConnection(String address) {
     // Init connection state stream.
     connectionStatesController = StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
@@ -41,16 +37,9 @@ class BluetoothSerial implements Bluetooth {
     // Init data stream.
     //remoOutputController = StreamController<Uint8List>();
 
-    BluetoothConnection.toAddress(selectedDeviceInfos!.address)
+    BluetoothConnection.toAddress(address)
         .then((connection) {
       _connectedDevice = connection;
-      _connectedDevice.input!.listen((data) {
-        if (shouldWriteData) {
-          _buffer.write(data);
-        }
-      });
-
-      startRemoTransmission();
       connectionStatesController.add(ConnectionStates.connected);
     });
     connectionStatesController.add(ConnectionStates.connecting);
@@ -85,11 +74,20 @@ class BluetoothSerial implements Bluetooth {
     _connectedDevice.output.add(message2);
   }
 
+  /// Allows to send a message to the connected device.
+  bool sendMessage(Uint8List message) {
+
+    try {
+    _connectedDevice.output.add(message);
+    } catch (StateError) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   Stream<ConnectionStates> startDisconnection() {
-    if (selectedDeviceInfos == null) {
-      throw ArgumentError();
-    }
+
     // Init stream.
     connectionStatesController = StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
@@ -103,18 +101,6 @@ class BluetoothSerial implements Bluetooth {
     return statesStream;
   }
 
-  @override
-  void startTransmission() {
-    _buffer.clear();
-    shouldWriteData = true;
-  }
-
-  @override
-  String stopTransmission() {
-    shouldWriteData = false;
-    return _buffer.toString();
-  }
-
   static final BluetoothSerial _singleton = BluetoothSerial._internal();
 
   factory BluetoothSerial() {
@@ -122,9 +108,6 @@ class BluetoothSerial implements Bluetooth {
   }
 
   BluetoothSerial._internal();
-
-  @override
-  DeviceInfos? selectedDeviceInfos;
 
   late BluetoothConnection _connectedDevice;
 
@@ -139,9 +122,4 @@ class BluetoothSerial implements Bluetooth {
   /// Updates on the connection status will be given through this stream.
   late StreamController<ConnectionStates> connectionStatesController;
 
-  /// Data coming from the device will be given through this stream.
-  //StreamController<Uint8List> remoOutputController;
-
-  StringBuffer _buffer = StringBuffer();
-  bool shouldWriteData = false;
 }

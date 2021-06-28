@@ -50,6 +50,11 @@ class BluetoothSerial implements Bluetooth {
     return statesStream;
   }
 
+  @override
+  Stream<Uint8List>? getInputStream() {
+    return _connectedDevice.input;
+  }
+
   /// Allows to send a message to the connected device.
   bool sendMessage(Uint8List message) {
     try {

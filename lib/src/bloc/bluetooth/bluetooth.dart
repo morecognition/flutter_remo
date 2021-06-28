@@ -5,9 +5,19 @@ import 'bluetooth_serial.dart';
 
 /// Template used by a class used to discover Bluetooth devices and connect to them. Made to decouple the application from the Bluetooth library used.
 abstract class Bluetooth {
+  /// Starts discovering Bluetooth devices.
   Stream<DeviceInfos> startDiscovery();
+
+  /// Starts the connection with a Bluetooth device, given the address.
   Stream<ConnectionStates> startConnection(String address);
+
+  /// Gets the stream containing data coming from the Bluetooth device.
+  Stream<Uint8List>? getInputStream();
+
+  /// Starts disconnecting a previously connected Bluetooth device.
   Stream<ConnectionStates> startDisconnection();
+
+  /// Sends a message to a previously connected Bluetooth device.
   bool sendMessage(Uint8List message);
 
   factory Bluetooth() {

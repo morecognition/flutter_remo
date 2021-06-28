@@ -37,6 +37,33 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             yield Disconnected();
             break;
           case ConnectionStates.connected:
+            // TODO: these 2 messages should eventually go to the start transmission function once Maurizio Porro is done updating the firmware.
+            // Contains ASCII codes Remo firmware expects.
+            Uint8List message = Uint8List.fromList([
+              65, // A
+              84, // T
+              83, // S
+              49, // 1 for acquisition mode
+              61, // = for write
+              50, // 2 for RMS
+              13, // CR
+              10, // LF
+            ]);
+            _bluetooth.sendMessage(message);
+
+            // Contains ASCII codes Remo firmware expects.
+            Uint8List message2 = Uint8List.fromList([
+              65, // A
+              84, // T
+              83, // S
+              50, // 2 for operating mode
+              61, // = for write
+              50, // 2 for RMS
+              13, // CR
+              10, // LF
+            ]);
+            _bluetooth.sendMessage(message2);
+
             yield Connected();
             break;
           case ConnectionStates.connecting:
@@ -86,38 +113,61 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   Stream<RemoState> _startTransmission() async* {
     yield StartingTransmission();
-    // Contains ASCII codes Remo firmware expects.
-    Uint8List message = Uint8List.fromList([
-      65, // A
-      84, // T
-      83, // S
-      49, // 1 for acquisition mode
-      61, // = for write
-      50, // 2 for RMS
-      13, // CR
-      10, // LF
-    ]);
-    _bluetooth.sendMessage(message);
+    // Allocating output stream.
+    StreamController<RemoData> dataController = StreamController<RemoData>();
+    Stream<RemoData> dataStream = dataController.stream;
 
-    // Contains ASCII codes Remo firmware expects.
-    Uint8List message2 = Uint8List.fromList([
-      65, // A
-      84, // T
-      83, // S
-      50, // 2 for operating mode
-      61, // = for write
-      50, // 2 for RMS
-      13, // CR
-      10, // LF
-    ]);
-    _bluetooth.sendMessage(message2);
-    yield TransmissionStarted();
+    // Getting data from Remo.
+    remoDataStream = _bluetooth.getInputStream()!;
+    remoDataStream.listen(
+      (dataBytes) {
+        if (isTransmissionEnabled && dataBytes.length == 41) {
+          // Converting the data coming from Remo.
+          List<int> emg = List.filled(8, 0);
+          for (int i = 0, byteIndex = 0; i < 8; ++i) {
+            byteIndex = 2 * i;
+            emg[i] = (dataBytes[5 + byteIndex] << 8) + dataBytes[6 + byteIndex];
+          }
+          dataController.add(RemoData(emg: emg));
+        }
+      },
+      onDone: () {
+        dataController.close();
+      },
+    );
+
+    isTransmissionEnabled = true;
+    yield TransmissionStarted(dataStream);
   }
 
   Stream<RemoState> _stopTransmission() async* {
-    // TODO: waiting for M.Porro to allow stopping the data transmission.
+    yield StoppingTransmission();
+    isTransmissionEnabled = false;
+    yield Connected();
   }
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();
+
+  /// The stream of data coming directly from the Remo device.
+  late final Stream<Uint8List> remoDataStream;
+
+  /// Flag to enable/disable the stream of parsed data.
+  bool isTransmissionEnabled = false;
+}
+
+class RemoData {
+  //final Uint32 timestamp;
+  final List<int> emg;
+  //final Vector3 acceleration;
+  //final Vector3 angularVelocity;
+  //final Vector3 magneticField;
+
+  RemoData({
+    //required this.timestamp,
+    required this.emg,
+    //required this.acceleration,
+    //required this.angularVelocity,
+    //required this.magneticField,
+  });
 }

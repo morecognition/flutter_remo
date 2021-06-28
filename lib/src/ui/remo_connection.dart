@@ -10,34 +10,44 @@ class WearRemoStep extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text("1/4"),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Wear Remo and turn it on"),
-            Container(
-              padding: EdgeInsets.all(10),
-              child: Image.asset(
-                'assets/wear_remo.png',
-                package: 'flutter_remo',
-              ),
-            ),
-            SizedBox(height: 20),
-            TextButton(
+        actions: [
+          IconButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TurnOnBluetoothStep(),
-                  ),
-                );
+                Navigator.of(context).pop();
               },
-              style: TextButton.styleFrom(
-                  backgroundColor: Theme.of(context).accentColor),
-              child: Text('NEXT'),
-            ),
-          ],
+              icon: Icon(Icons.close))
+        ],
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text("Wear Remo and turn it on"),
+              Container(
+                padding: EdgeInsets.all(10),
+                child: Image.asset(
+                  'assets/wear_remo.png',
+                  package: 'flutter_remo',
+                ),
+              ),
+              SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TurnOnBluetoothStep(),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                    backgroundColor: Theme.of(context).accentColor),
+                child: Text('NEXT'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -50,31 +60,45 @@ class TurnOnBluetoothStep extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text("2/4"),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('Turn on bluetooth on your device'),
-            Image.asset(
-              'assets/bluetooth.png',
-              package: 'flutter_remo',
-            ),
-            SizedBox(height: 20),
-            TextButton(
+        actions: [
+          IconButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BluetoothStep(),
-                  ),
-                );
+                int count = 0;
+                Navigator.of(context).popUntil((route) => count++ == 2);
               },
-              style: TextButton.styleFrom(
-                  backgroundColor: Theme.of(context).accentColor),
-              child: Text('NEXT'),
-            ),
-          ],
+              icon: Icon(Icons.close))
+        ],
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text('Turn on bluetooth on your device'),
+              Image.asset(
+                'assets/bluetooth.png',
+                package: 'flutter_remo',
+              ),
+              SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BlocProvider(
+                        create: (context) => BluetoothBloc(),
+                        child: BluetoothStep(),
+                      ),
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                    backgroundColor: Theme.of(context).accentColor),
+                child: Text('NEXT'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -87,6 +111,14 @@ class BluetoothStep extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text("3/4"),
+        actions: [
+          IconButton(
+              onPressed: () {
+                int count = 0;
+                Navigator.of(context).popUntil((route) => count++ == 3);
+              },
+              icon: Icon(Icons.close))
+        ],
       ),
       body: BlocBuilder<BluetoothBloc, BluetoothState>(
         builder: (context, bluetoothState) {
@@ -152,8 +184,53 @@ class RemoConnectionStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('')),
-      body: ,
+      appBar: AppBar(
+        title: Text('4/4'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              int count = 0;
+              Navigator.of(context).popUntil((route) => count++ == 4);
+            },
+            icon: Icon(Icons.close),
+          ),
+        ],
+      ),
+      body: BlocBuilder<RemoBloc, RemoState>(
+        builder: (context, state) {
+          if (state is Disconnected) {
+            return Center(
+              child: TextButton(
+                  onPressed: () {
+                    BlocProvider.of<RemoBloc>(context).add(
+                      OnConnectDevice(bluetoothAddress),
+                    );
+                  },
+                  child: Text('Connect')),
+            );
+          } else if (state is Connecting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (state is Connected) {
+            return Center(
+              child: TextButton(
+                  onPressed: () {
+                    BlocProvider.of<RemoBloc>(context).add(
+                      OnDisconnectDevice(),
+                    );
+                  },
+                  child: Text('Disconnect')),
+            );
+          } else if (state is ConnectionError) {
+            return Center(
+              child: Text('Connection error'),
+            );
+          } else if (state is Disconnecting) {
+            return Center(child: CircularProgressIndicator());
+          } else {
+            return Text('Unhandled state: ' + state.runtimeType.toString());
+          }
+        },
+      ),
     );
   }
 

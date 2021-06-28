@@ -8,8 +8,7 @@ part 'remo_event.dart';
 part 'remo_state.dart';
 
 /// Allows the pairing and connection with a Remo device
-class RemoBloc
-    extends Bloc<RemoEvent, RemoState> {
+class RemoBloc extends Bloc<RemoEvent, RemoState> {
   RemoBloc() : super(Disconnected());
 
   @override
@@ -31,27 +30,23 @@ class RemoBloc
   Stream<RemoState> _startConnecting(OnConnectDevice event) async* {
     yield Connecting();
     try {
-      await for (ConnectionStates state in _bluetooth.startConnection(event.address)) {
+      await for (ConnectionStates state
+          in _bluetooth.startConnection(event.address)) {
         switch (state) {
           case ConnectionStates.disconnected:
-            yield Disconnected(
-            );
+            yield Disconnected();
             break;
           case ConnectionStates.connected:
-            yield Connected(
-            );
+            yield Connected();
             break;
           case ConnectionStates.connecting:
-            yield Connecting(
-            );
+            yield Connecting();
             break;
           case ConnectionStates.disconnecting:
-            Disconnecting(
-            );
+            Disconnecting();
             break;
           case ConnectionStates.error:
-            yield ConnectionError(
-            );
+            yield ConnectionError();
             break;
         }
       }
@@ -63,30 +58,24 @@ class RemoBloc
 
   /// Disconnects the device.
   Stream<RemoState> _startDisconnecting(OnDisconnectDevice event) async* {
-    yield Disconnecting(
-    );
+    yield Disconnecting();
     try {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
-            yield Disconnected(
-            );
+            yield Disconnected();
             break;
           case ConnectionStates.connected:
-            yield Connected(
-            );
+            yield Connected();
             break;
           case ConnectionStates.connecting:
-            yield Connecting(
-            );
+            yield Connecting();
             break;
           case ConnectionStates.disconnecting:
-            Disconnecting(
-            );
+            Disconnecting();
             break;
           case ConnectionStates.error:
-            yield ConnectionError(
-            );
+            yield ConnectionError();
             break;
         }
       }
@@ -97,7 +86,7 @@ class RemoBloc
 
   Stream<RemoState> _startTransmission() async* {
     yield StartingTransmission();
-        // Contains ASCII codes Remo firmware expects.
+    // Contains ASCII codes Remo firmware expects.
     Uint8List message = Uint8List.fromList([
       65, // A
       84, // T

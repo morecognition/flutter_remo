@@ -122,11 +122,14 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     remoDataStream.listen(
       (dataBytes) {
         if (isTransmissionEnabled && dataBytes.length == 41) {
+          ByteData byteArray = dataBytes.buffer.asByteData();
           // Converting the data coming from Remo.
-          List<int> emg = List.filled(8, 0);
-          for (int i = 0, byteIndex = 0; i < 8; ++i) {
-            byteIndex = 2 * i;
-            emg[i] = (dataBytes[5 + byteIndex] << 8) + dataBytes[6 + byteIndex];
+          List<double> emg = List.filled(channels, 0);
+          for (int byteIndex = 8, emgIndex = 0;
+              emgIndex < channels;
+              byteIndex += 2, ++emgIndex) {
+            var value = byteArray.getUint16(byteIndex).toDouble();
+            emg[emgIndex] = value;
           }
           dataController.add(RemoData(emg: emg));
         }
@@ -146,6 +149,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     yield Connected();
   }
 
+  // Remo's emg channels.
+  static const int channels = 8;
+
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();
 
@@ -158,7 +164,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
 class RemoData {
   //final Uint32 timestamp;
-  final List<int> emg;
+  final List<double> emg;
   //final Vector3 acceleration;
   //final Vector3 angularVelocity;
   //final Vector3 magneticField;

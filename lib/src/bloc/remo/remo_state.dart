@@ -25,3 +25,5 @@ class TransmissionStarted extends RemoState {
 }
 
 class StoppingTransmission extends RemoState {}
+
+class TransmissionStopped extends RemoState {}

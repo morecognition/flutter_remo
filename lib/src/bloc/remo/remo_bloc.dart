@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/src/bloc/bluetooth/bluetooth.dart';
+import 'package:vector_math/vector_math.dart';
 
 part 'remo_event.dart';
 part 'remo_state.dart';
@@ -23,6 +24,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       yield* _startTransmission();
     } else if (event is OnStopTransmission) {
       yield* _stopTransmission();
+    } else if (event is OnResetTransmission) {
+      yield* _resetTransmission();
     }
   }
 
@@ -63,6 +66,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
               10, // LF
             ]);
             _bluetooth.sendMessage(message2);
+
+            remoDataStream = _bluetooth.getInputStream()!;
 
             yield Connected();
             break;
@@ -113,25 +118,56 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   Stream<RemoState> _startTransmission() async* {
     yield StartingTransmission();
-    // Allocating output stream.
-    StreamController<RemoData> dataController = StreamController<RemoData>();
-    Stream<RemoData> dataStream = dataController.stream;
 
     // Getting data from Remo.
-    remoDataStream = _bluetooth.getInputStream()!;
-    remoDataStream.listen(
+    remoStreamSubscription = remoDataStream.listen(
       (dataBytes) {
         if (isTransmissionEnabled && dataBytes.length == 41) {
           ByteData byteArray = dataBytes.buffer.asByteData();
           // Converting the data coming from Remo.
+          //// EMG.
           List<double> emg = List.filled(channels, 0);
           for (int byteIndex = 8, emgIndex = 0;
               emgIndex < channels;
               byteIndex += 2, ++emgIndex) {
-            var value = byteArray.getUint16(byteIndex).toDouble();
-            emg[emgIndex] = value;
+            emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
           }
-          dataController.add(RemoData(emg: emg));
+          //// Accelerometer.
+          //// Gyroscope.
+          //// Magnetometer.
+          // Number 3 is because we are considering accelerations in the 3 dimensions of space.
+          List<double> acceleration = List.filled(3, 0);
+          List<double> angularVelocity = List.filled(3, 0);
+          List<double> magneticField = List.filled(3, 0);
+          for (int byteIndex = 24, index = 0;
+              index < 3;
+              byteIndex += 2, ++index) {
+            acceleration[index] = byteArray.getInt16(byteIndex) / 100;
+            angularVelocity[index] = byteArray.getInt16(byteIndex + 6) / 100;
+            magneticField[index] = byteArray.getInt16(byteIndex + 12) / 100;
+          }
+
+          /// Finally.
+          dataController.add(
+            RemoData(
+              emg: emg,
+              acceleration: Vector3(
+                acceleration[0],
+                acceleration[1],
+                acceleration[2],
+              ),
+              angularVelocity: Vector3(
+                angularVelocity[0],
+                angularVelocity[1],
+                angularVelocity[2],
+              ),
+              magneticField: Vector3(
+                magneticField[0],
+                magneticField[1],
+                magneticField[2],
+              ),
+            ),
+          );
         }
       },
       onDone: () {
@@ -146,11 +182,27 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   Stream<RemoState> _stopTransmission() async* {
     yield StoppingTransmission();
     isTransmissionEnabled = false;
-    yield Connected();
+    remoStreamSubscription.cancel();
+    yield TransmissionStopped();
+  }
+
+  Stream<RemoState> _resetTransmission() async* {
+    if (await _bluetooth.isDeviceConnected()) {
+      yield Connected();
+    } else {
+      yield Disconnected();
+    }
   }
 
   // Remo's emg channels.
   static const int channels = 8;
+
+  // Stream subscription handler.
+  late StreamSubscription<Uint8List> remoStreamSubscription;
+  // The controller for the stream to pass to the UI.
+  StreamController<RemoData> dataController = StreamController<RemoData>();
+  // The stream to pass to the UI.
+  late Stream<RemoData> dataStream = dataController.stream.asBroadcastStream();
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();
@@ -165,15 +217,15 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 class RemoData {
   //final Uint32 timestamp;
   final List<double> emg;
-  //final Vector3 acceleration;
-  //final Vector3 angularVelocity;
-  //final Vector3 magneticField;
+  final Vector3 acceleration;
+  final Vector3 angularVelocity;
+  final Vector3 magneticField;
 
   RemoData({
     //required this.timestamp,
     required this.emg,
-    //required this.acceleration,
-    //required this.angularVelocity,
-    //required this.magneticField,
+    required this.acceleration,
+    required this.angularVelocity,
+    required this.magneticField,
   });
 }

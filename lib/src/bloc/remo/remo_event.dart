@@ -14,3 +14,5 @@ class OnDisconnectDevice extends RemoEvent {}
 class OnStartTransmission extends RemoEvent {}
 
 class OnStopTransmission extends RemoEvent {}
+
+class OnResetTransmission extends RemoEvent {}

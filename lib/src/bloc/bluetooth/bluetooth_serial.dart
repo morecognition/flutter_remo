@@ -52,7 +52,7 @@ class BluetoothSerial implements Bluetooth {
 
   @override
   Stream<Uint8List>? getInputStream() {
-    return _connectedDevice.input;
+    return _connectedDevice.input?.asBroadcastStream();
   }
 
   /// Allows to send a message to the connected device.
@@ -63,6 +63,10 @@ class BluetoothSerial implements Bluetooth {
       return false;
     }
     return true;
+  }
+
+  Future<bool> isDeviceConnected() async {
+    return (await _bluetoothSerial.isEnabled)!;
   }
 
   @override

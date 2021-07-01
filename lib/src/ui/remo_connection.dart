@@ -206,6 +206,8 @@ class RemoConnectionStep extends StatelessWidget {
                       OnConnectDevice(bluetoothAddress),
                     );
                   },
+                  style: TextButton.styleFrom(
+                      backgroundColor: Theme.of(context).accentColor),
                   child: Text('Connect')),
             );
           } else if (state is Connecting) {
@@ -214,11 +216,12 @@ class RemoConnectionStep extends StatelessWidget {
             return Center(
               child: TextButton(
                   onPressed: () {
-                    BlocProvider.of<RemoBloc>(context).add(
-                      OnDisconnectDevice(),
-                    );
+                    int count = 0;
+                    Navigator.of(context).popUntil((route) => count++ == 4);
                   },
-                  child: Text('Disconnect')),
+                  style: TextButton.styleFrom(
+                      backgroundColor: Theme.of(context).accentColor),
+                  child: Text('Finish')),
             );
           } else if (state is ConnectionError) {
             return Center(

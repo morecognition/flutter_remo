@@ -165,7 +165,8 @@ class BluetoothStep extends StatelessWidget {
                   child: Text("Discover"),
                 ),
                 onPressed: () async {
-                  if (await Permission.locationWhenInUse.request().isGranted) {
+                  if (await Permission.locationWhenInUse.request().isGranted &&
+                      await Permission.bluetooth.request().isGranted) {
                     BlocProvider.of<BluetoothBloc>(context)
                         .add(OnStartDiscovery());
                   }

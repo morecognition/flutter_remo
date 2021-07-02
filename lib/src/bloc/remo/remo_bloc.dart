@@ -214,7 +214,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   bool isTransmissionEnabled = false;
 }
 
-@JsonSerializable()
 class RemoData {
   //final Uint32 timestamp;
   final List<double> emg;
@@ -230,7 +229,10 @@ class RemoData {
     required this.magneticField,
   });
 
-  factory RemoData.fromJson(Map<String, dynamic> json) =>
-      _$RemoDataFromJson(json);
-  Map<String, dynamic> toJson() => _$RemoDataToJson(this);
+  Map<String, dynamic> toJson() => {
+        'emg': emg,
+        'acceleration': acceleration,
+        'angularVelocity': angularVelocity,
+        'magneticField': magneticField,
+      };
 }

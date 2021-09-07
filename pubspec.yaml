@@ -12,7 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   bloc: ^7.0.0
-  flutter_bluetooth_serial: ^0.3.0
+  flutter_bluetooth_serial: ^0.4.0
   flutter_bloc: ^7.0.1
   permission_handler: ^8.1.0
   vector_math: ^2.1.0

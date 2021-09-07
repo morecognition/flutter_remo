@@ -15,11 +15,11 @@ class BluetoothSerial implements Bluetooth {
 
     _bluetoothSerial.startDiscovery().listen((result) {
       // For some reason the name of some devices can be null or empty. Better to avoid those edge cases to prevent segfault.
-      if (result.device!.name != null && result.device!.address != null) {
+      if (result.device.name != null) {
         infoStreamController.add(
           DeviceInfos(
-            result.device!.name!,
-            result.device!.address!,
+            result.device.name!,
+            result.device.address,
           ),
         );
       }

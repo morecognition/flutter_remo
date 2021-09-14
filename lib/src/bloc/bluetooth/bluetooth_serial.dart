@@ -59,7 +59,7 @@ class BluetoothSerial implements Bluetooth {
   bool sendMessage(Uint8List message) {
     try {
       _connectedDevice.output.add(message);
-    } catch (StateError) {
+    } on StateError {
       return false;
     }
     return true;

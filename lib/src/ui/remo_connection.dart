@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:wakelock/wakelock.dart';
 
 class WearRemoStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    Wakelock.enable();
     return Scaffold(
       appBar: AppBar(
         title: Text("1/4"),

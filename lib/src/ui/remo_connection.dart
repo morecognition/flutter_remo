@@ -84,7 +84,9 @@ class TurnOnBluetoothStep extends StatelessWidget {
               ),
               SizedBox(height: 20),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  if (await Permission.locationWhenInUse.request().isGranted &&
+                      await Permission.bluetooth.request().isGranted) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -94,10 +96,10 @@ class TurnOnBluetoothStep extends StatelessWidget {
                       ),
                     ),
                   );
-                },
+                }},
                 style: TextButton.styleFrom(
                     backgroundColor: Theme.of(context).accentColor),
-                child: Text('NEXT'),
+                child: Text('CONNECT'),
               ),
             ],
           ),
@@ -110,6 +112,8 @@ class TurnOnBluetoothStep extends StatelessWidget {
 class BluetoothStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    BlocProvider.of<BluetoothBloc>(context)
+        .add(OnStartDiscovery());
     return Scaffold(
       appBar: AppBar(
         title: Text("3/4"),

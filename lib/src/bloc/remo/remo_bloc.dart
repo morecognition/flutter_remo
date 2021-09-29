@@ -230,9 +230,9 @@ class RemoData {
   });
 
   Map<String, dynamic> toJson() => {
-        'emg': emg,
-        'acceleration': acceleration,
-        'angularVelocity': angularVelocity,
-        'magneticField': magneticField,
+        '"emg"': emg,
+        '"acceleration"': acceleration,
+        '"angularVelocity"': angularVelocity,
+        '"magneticField"': magneticField,
       };
 }

@@ -4,6 +4,37 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
+Future<String> get _localPath async {
+  final directory = await getApplicationDocumentsDirectory();
+  return directory.path;
+}
+Future<File> get _localFile async {
+  final path = await _localPath;
+  return File('$path/remo_address.txt');
+}
+Future<String> lastDeviceAddress() async {
+  try {
+    final file = await _localFile;
+    // Read the file
+    final contents = await file.readAsString();
+    return contents;
+  } catch (e) {
+    // If encountering an error, return ''
+    return '';
+  }
+}
+void createLastDeviceFile(String newDeviceAddress) async{
+  try {
+    final file = await _localFile;
+    file.writeAsString(newDeviceAddress);
+  } catch (e) {
+    // If encountering an error, return ''
+    return;
+  }
+}
 
 class WearRemoStep extends StatelessWidget {
   @override
@@ -130,6 +161,21 @@ class BluetoothStep extends StatelessWidget {
         builder: (context, bluetoothState) {
           late Widget _widget;
           if (bluetoothState is DiscoveredDevices) {
+            String lastDevice = lastDeviceAddress().toString();
+            bool flag = false;
+            bluetoothState.deviceAddresses.forEach((discoveredAddress) {
+              if(discoveredAddress == lastDevice){
+                flag = true;}
+            });
+            if (flag){
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RemoConnectionStep(
+                      bluetoothAddress: lastDevice),
+                ),
+              );
+            }
             _widget = RefreshIndicator(
               onRefresh: () async {
                 // When the widget is scrolled down a refresh event is sent to the bloc.
@@ -139,11 +185,14 @@ class BluetoothStep extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children:
                     List.generate(bluetoothState.deviceNames.length, (index) {
-                  return ListTile(
+                      return ListTile(
                     title: Text(bluetoothState.deviceNames[index]),
                     subtitle: Text(bluetoothState.deviceAddresses[index]),
                     onTap: () {
                       // When the text button is pressed, tell the block which device it has to connect to.
+                      if(!flag){
+                        createLastDeviceFile(bluetoothState.deviceAddresses[index]);
+                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -190,6 +239,9 @@ class BluetoothStep extends StatelessWidget {
 class RemoConnectionStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    BlocProvider.of<RemoBloc>(context).add(
+      OnConnectDevice(bluetoothAddress),
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text('4/4'),

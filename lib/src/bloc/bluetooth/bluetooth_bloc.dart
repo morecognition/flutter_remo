@@ -1,11 +1,9 @@
 import 'dart:async';
-
 import 'package:bloc/bloc.dart';
-
 import 'bluetooth.dart';
-
 part 'bluetooth_event.dart';
 part 'bluetooth_state.dart';
+
 
 /// Logic to discover nearby Bluetooth devices.
 class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
@@ -29,7 +27,6 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
       _bluetooth.startDiscovery().listen((info) {
         _deviceNames.add(info.name);
         _deviceAddresses.add(info.address);
-        
       }, onDone: () => add(OnDiscoveredDevices(_deviceNames, _deviceAddresses),),);
     } catch (_) {
       yield DiscoveryError();

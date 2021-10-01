@@ -40,6 +40,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             yield Disconnected();
             break;
           case ConnectionStates.connected:
+
             // TODO: these 2 messages should eventually go to the start transmission function once Maurizio Porro is done updating the firmware.
             // Contains ASCII codes Remo firmware expects.
             Uint8List message = Uint8List.fromList([
@@ -230,9 +231,9 @@ class RemoData {
   });
 
   Map<String, dynamic> toJson() => {
-        'emg': emg,
-        'acceleration': acceleration,
-        'angularVelocity': angularVelocity,
-        'magneticField': magneticField,
+        '"emg"': emg,
+        '"acceleration"': acceleration,
+        '"angularVelocity"': angularVelocity,
+        '"magneticField"': magneticField,
       };
 }

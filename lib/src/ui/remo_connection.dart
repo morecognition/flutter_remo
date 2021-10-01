@@ -3,10 +3,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:wakelock/wakelock.dart';
+
+//attempt of connection to last device
+/*import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
+String pathToLastDevice(){
+  Future<Directory?> externalStorageDirectory = getExternalStorageDirectory();
+  return externalStorageDirectory.toString() + '/remo_address.txt';
+}
+
+Future<String> lastDeviceConnected() async {
+  try {
+    final file = File(pathToLastDevice());
+    // Read the file
+    final contents = await file.readAsString();
+    return contents;
+  } catch (e) {
+    // If encountering an error, return ''
+    return '';
+  }
+}
+void createLastDeviceFile(String newDeviceAddress){
+  try {
+    final file = File(pathToLastDevice());
+    file.writeAsString(newDeviceAddress);
+  } catch (e) {
+    // If encountering an error, return ''
+    return;
+  }
+}
+
+//inside step 3:
+String lastDevice = lastDeviceConnected().toString();
+bool flag = false;
+bluetoothState.deviceAddresses.forEach((discoveredAddress) {
+  if(discoveredAddress == lastDevice){
+    flag = true;}
+    });
+  if (flag){
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+      builder: (context) => RemoConnectionStep(
+      bluetoothAddress: lastDevice),
+      ),
+    );}
+    //later
+    if(!flag){
+      createLastDeviceFile(bluetoothState.deviceAddresses[index]);
+    }
+*/
 
 class WearRemoStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    Wakelock.enable();
     return Scaffold(
       appBar: AppBar(
         title: Text("1/4"),
@@ -57,6 +110,7 @@ class WearRemoStep extends StatelessWidget {
 class TurnOnBluetoothStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    /*Future<PermissionStatus> mediaAccess =Permission.accessMediaLocation.request();*/
     return Scaffold(
       appBar: AppBar(
         title: Text("2/4"),
@@ -82,7 +136,9 @@ class TurnOnBluetoothStep extends StatelessWidget {
               ),
               SizedBox(height: 20),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
+                  if (await Permission.locationWhenInUse.request().isGranted &&
+                      await Permission.bluetooth.request().isGranted) {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -92,10 +148,10 @@ class TurnOnBluetoothStep extends StatelessWidget {
                       ),
                     ),
                   );
-                },
+                }},
                 style: TextButton.styleFrom(
                     backgroundColor: Theme.of(context).accentColor),
-                child: Text('NEXT'),
+                child: Text('CONNECT'),
               ),
             ],
           ),
@@ -108,6 +164,8 @@ class TurnOnBluetoothStep extends StatelessWidget {
 class BluetoothStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    BlocProvider.of<BluetoothBloc>(context)
+        .add(OnStartDiscovery());
     return Scaffold(
       appBar: AppBar(
         title: Text("3/4"),
@@ -133,7 +191,7 @@ class BluetoothStep extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 children:
                     List.generate(bluetoothState.deviceNames.length, (index) {
-                  return ListTile(
+                      return ListTile(
                     title: Text(bluetoothState.deviceNames[index]),
                     subtitle: Text(bluetoothState.deviceAddresses[index]),
                     onTap: () {
@@ -184,6 +242,9 @@ class BluetoothStep extends StatelessWidget {
 class RemoConnectionStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    BlocProvider.of<RemoBloc>(context).add(
+      OnConnectDevice(bluetoothAddress),
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text('4/4'),

@@ -4,20 +4,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock/wakelock.dart';
-import 'package:path_provider/path_provider.dart';
+
+//attempt of connection to last device
+/*import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-Future<String> get _localPath async {
-  final directory = await getApplicationDocumentsDirectory();
-  return directory.path;
+String pathToLastDevice(){
+  Future<Directory?> externalStorageDirectory = getExternalStorageDirectory();
+  return externalStorageDirectory.toString() + '/remo_address.txt';
 }
-Future<File> get _localFile async {
-  final path = await _localPath;
-  return File('$path/remo_address.txt');
-}
-Future<String> lastDeviceAddress() async {
+
+Future<String> lastDeviceConnected() async {
   try {
-    final file = await _localFile;
+    final file = File(pathToLastDevice());
     // Read the file
     final contents = await file.readAsString();
     return contents;
@@ -26,15 +25,36 @@ Future<String> lastDeviceAddress() async {
     return '';
   }
 }
-void createLastDeviceFile(String newDeviceAddress) async{
+void createLastDeviceFile(String newDeviceAddress){
   try {
-    final file = await _localFile;
+    final file = File(pathToLastDevice());
     file.writeAsString(newDeviceAddress);
   } catch (e) {
     // If encountering an error, return ''
     return;
   }
 }
+
+//inside step 3:
+String lastDevice = lastDeviceConnected().toString();
+bool flag = false;
+bluetoothState.deviceAddresses.forEach((discoveredAddress) {
+  if(discoveredAddress == lastDevice){
+    flag = true;}
+    });
+  if (flag){
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+      builder: (context) => RemoConnectionStep(
+      bluetoothAddress: lastDevice),
+      ),
+    );}
+    //later
+    if(!flag){
+      createLastDeviceFile(bluetoothState.deviceAddresses[index]);
+    }
+*/
 
 class WearRemoStep extends StatelessWidget {
   @override
@@ -90,6 +110,7 @@ class WearRemoStep extends StatelessWidget {
 class TurnOnBluetoothStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    /*Future<PermissionStatus> mediaAccess =Permission.accessMediaLocation.request();*/
     return Scaffold(
       appBar: AppBar(
         title: Text("2/4"),
@@ -161,21 +182,6 @@ class BluetoothStep extends StatelessWidget {
         builder: (context, bluetoothState) {
           late Widget _widget;
           if (bluetoothState is DiscoveredDevices) {
-            String lastDevice = lastDeviceAddress().toString();
-            bool flag = false;
-            bluetoothState.deviceAddresses.forEach((discoveredAddress) {
-              if(discoveredAddress == lastDevice){
-                flag = true;}
-            });
-            if (flag){
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RemoConnectionStep(
-                      bluetoothAddress: lastDevice),
-                ),
-              );
-            }
             _widget = RefreshIndicator(
               onRefresh: () async {
                 // When the widget is scrolled down a refresh event is sent to the bloc.
@@ -190,9 +196,6 @@ class BluetoothStep extends StatelessWidget {
                     subtitle: Text(bluetoothState.deviceAddresses[index]),
                     onTap: () {
                       // When the text button is pressed, tell the block which device it has to connect to.
-                      if(!flag){
-                        createLastDeviceFile(bluetoothState.deviceAddresses[index]);
-                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(

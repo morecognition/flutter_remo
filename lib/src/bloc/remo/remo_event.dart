@@ -8,6 +8,8 @@ class OnConnectDevice extends RemoEvent {
   final String address;
 }
 
+class OnSwitchTransmissionMode extends RemoEvent {}
+
 /// Starts device disconnection.
 class OnDisconnectDevice extends RemoEvent {}
 

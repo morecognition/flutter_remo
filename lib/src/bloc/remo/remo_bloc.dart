@@ -26,6 +26,15 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       yield* _stopTransmission();
     } else if (event is OnResetTransmission) {
       yield* _resetTransmission();
+    } else if (event is OnSwitchTransmissionMode) {
+      switch (transmissionMode) {
+        case TransmissionMode.rms:
+          transmissionMode = TransmissionMode.rawImu;
+          break;
+        case TransmissionMode.rawImu:
+          transmissionMode = TransmissionMode.rms;
+          break;
+      }
     }
   }
 
@@ -40,29 +49,37 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             yield Disconnected();
             break;
           case ConnectionStates.connected:
-
-            // TODO: these 2 messages should eventually go to the start transmission function once Maurizio Porro is done updating the firmware.
-            // Contains ASCII codes Remo firmware expects.
+            // TODO: these 2 messages should eventually go to the start transmission function, if the device firmware will be updated.
+            late int acquisitionMode;
+            switch (transmissionMode) {
+              case TransmissionMode.rms:
+                acquisitionMode = 50;
+                break;
+              case TransmissionMode.rawImu:
+                acquisitionMode = 51;
+                break;
+            }
+            // Message to set acquisition mode.
             Uint8List message = Uint8List.fromList([
               65, // A
               84, // T
               83, // S
               49, // 1 for acquisition mode
               61, // = for write
-              50, // 2 for RMS
+              acquisitionMode, // 2 for RMS
               13, // CR
               10, // LF
             ]);
             _bluetooth.sendMessage(message);
 
-            // Contains ASCII codes Remo firmware expects.
+            // Message to set operating mode.
             Uint8List message2 = Uint8List.fromList([
               65, // A
               84, // T
               83, // S
               50, // 2 for operating mode
               61, // = for write
-              50, // 2 for RMS
+              50, // 2 transmission mode
               13, // CR
               10, // LF
             ]);
@@ -131,7 +148,14 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
           for (int byteIndex = 8, emgIndex = 0;
               emgIndex < channels;
               byteIndex += 2, ++emgIndex) {
-            emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
+            switch (transmissionMode) {
+              case TransmissionMode.rms:
+                emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
+                break;
+              case TransmissionMode.rawImu:
+                emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
+                break;
+            }
           }
           //// Accelerometer.
           //// Gyroscope.
@@ -213,6 +237,13 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   /// Flag to enable/disable the stream of parsed data.
   bool isTransmissionEnabled = false;
+
+  TransmissionMode transmissionMode = TransmissionMode.rms;
+}
+
+enum TransmissionMode {
+  rms,
+  rawImu,
 }
 
 class RemoData {

@@ -261,6 +261,10 @@ class RemoData {
     required this.magneticField,
   });
 
+  String toCsvString() {
+    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
+  }
+
   Map<String, dynamic> toJson() => {
         '"emg"': emg,
         '"acceleration"': acceleration,

@@ -10,31 +10,23 @@ part 'remo_state.dart';
 
 /// Allows the pairing and connection with a Remo device
 class RemoBloc extends Bloc<RemoEvent, RemoState> {
-  RemoBloc() : super(Disconnected());
+  RemoBloc() : super(Disconnected()) {
+    on<OnConnectDevice>((event, emit) => _startConnecting(event));
+    on<OnDisconnectDevice>((event, emit) => _startDisconnecting(event));
+    on<OnStartTransmission>((event, emit) => _startTransmission());
+    on<OnStopTransmission>((event, emit) => _stopTransmission());
+    on<OnResetTransmission>((event, emit) => _resetTransmission());
+    on<OnSwitchTransmissionMode>((event, emit) => _switchTransmissionMode());
+  }
 
-  @override
-  Stream<RemoState> mapEventToState(
-    RemoEvent event,
-  ) async* {
-    if (event is OnConnectDevice) {
-      yield* _startConnecting(event);
-    } else if (event is OnDisconnectDevice) {
-      yield* _startDisconnecting(event);
-    } else if (event is OnStartTransmission) {
-      yield* _startTransmission();
-    } else if (event is OnStopTransmission) {
-      yield* _stopTransmission();
-    } else if (event is OnResetTransmission) {
-      yield* _resetTransmission();
-    } else if (event is OnSwitchTransmissionMode) {
-      switch (transmissionMode) {
-        case TransmissionMode.rms:
-          transmissionMode = TransmissionMode.rawImu;
-          break;
-        case TransmissionMode.rawImu:
-          transmissionMode = TransmissionMode.rms;
-          break;
-      }
+  _switchTransmissionMode() {
+    switch (transmissionMode) {
+      case TransmissionMode.rms:
+        transmissionMode = TransmissionMode.rawImu;
+        break;
+      case TransmissionMode.rawImu:
+        transmissionMode = TransmissionMode.rms;
+        break;
     }
   }
 
@@ -264,11 +256,4 @@ class RemoData {
   String toCsvString() {
     return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
   }
-
-  Map<String, dynamic> toJson() => {
-        '"emg"': emg,
-        '"acceleration"': acceleration,
-        '"angularVelocity"': angularVelocity,
-        '"magneticField"': magneticField,
-      };
 }

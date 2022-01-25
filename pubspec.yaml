@@ -15,7 +15,7 @@ dependencies:
   flutter_bloc: ^7.3.3
   permission_handler: ^8.1.0
   vector_math: ^2.1.0
-  wakelock: ^0.5.2
+  wakelock: ^0.6.1
   path_provider: ^2.0.5
 dev_dependencies:
   flutter_test:

@@ -11,15 +11,16 @@ part 'remo_state.dart';
 /// Allows the pairing and connection with a Remo device
 class RemoBloc extends Bloc<RemoEvent, RemoState> {
   RemoBloc() : super(Disconnected()) {
-    on<OnConnectDevice>((event, emit) => _startConnecting(event));
-    on<OnDisconnectDevice>((event, emit) => _startDisconnecting(event));
-    on<OnStartTransmission>((event, emit) => _startTransmission());
-    on<OnStopTransmission>((event, emit) => _stopTransmission());
-    on<OnResetTransmission>((event, emit) => _resetTransmission());
-    on<OnSwitchTransmissionMode>((event, emit) => _switchTransmissionMode());
+    on<OnConnectDevice>(_startConnecting);
+    on<OnDisconnectDevice>(_startDisconnecting);
+    on<OnStartTransmission>(_startTransmission);
+    on<OnStopTransmission>(_stopTransmission);
+    on<OnResetTransmission>(_resetTransmission);
+    on<OnSwitchTransmissionMode>(_switchTransmissionMode);
   }
 
-  _switchTransmissionMode() {
+  void _switchTransmissionMode(
+      OnSwitchTransmissionMode _, Emitter<RemoState> emit) {
     switch (transmissionMode) {
       case TransmissionMode.rms:
         transmissionMode = TransmissionMode.rawImu;
@@ -31,14 +32,14 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   }
 
   /// Connects to a specific devices. The name is given by the select device event.
-  Stream<RemoState> _startConnecting(OnConnectDevice event) async* {
-    yield Connecting();
+  void _startConnecting(OnConnectDevice event, Emitter<RemoState> emit) async {
+    emit(Connecting());
     try {
       await for (ConnectionStates state
           in _bluetooth.startConnection(event.address)) {
         switch (state) {
           case ConnectionStates.disconnected:
-            yield Disconnected();
+            emit(Disconnected());
             break;
           case ConnectionStates.connected:
             // TODO: these 2 messages should eventually go to the start transmission function, if the device firmware will be updated.
@@ -64,6 +65,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             ]);
             _bluetooth.sendMessage(message);
 
+            Future.delayed(Duration(milliseconds: 10));
+
             // Message to set operating mode.
             Uint8List message2 = Uint8List.fromList([
               65, // A
@@ -79,55 +82,57 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
             remoDataStream = _bluetooth.getInputStream()!;
 
-            yield Connected();
+            emit(Connected());
             break;
           case ConnectionStates.connecting:
-            yield Connecting();
+            emit(Connecting());
             break;
           case ConnectionStates.disconnecting:
             Disconnecting();
             break;
           case ConnectionStates.error:
-            yield ConnectionError();
+            emit(ConnectionError());
             break;
         }
       }
     } on Exception {
       // TODO: check what specific exceptions can occur.
-      yield ConnectionError();
+      emit(ConnectionError());
     }
   }
 
   /// Disconnects the device.
-  Stream<RemoState> _startDisconnecting(OnDisconnectDevice event) async* {
-    yield Disconnecting();
+  void _startDisconnecting(
+      OnDisconnectDevice event, Emitter<RemoState> emit) async {
+    emit(Disconnecting());
     try {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
-            yield Disconnected();
+            emit(Disconnected());
             break;
           case ConnectionStates.connected:
-            yield Connected();
+            emit(Connected());
             break;
           case ConnectionStates.connecting:
-            yield Connecting();
+            emit(Connecting());
             break;
           case ConnectionStates.disconnecting:
-            Disconnecting();
+            emit(Disconnecting());
             break;
           case ConnectionStates.error:
-            yield ConnectionError();
+            emit(ConnectionError());
             break;
         }
       }
     } on ArgumentError {
-      yield ConnectionError();
+      emit(ConnectionError());
     }
   }
 
-  Stream<RemoState> _startTransmission() async* {
-    yield StartingTransmission();
+  void _startTransmission(
+      OnStartTransmission _, Emitter<RemoState> emit) async {
+    emit(StartingTransmission());
 
     // Getting data from Remo.
     remoStreamSubscription = remoDataStream.listen(
@@ -193,21 +198,22 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     );
 
     isTransmissionEnabled = true;
-    yield TransmissionStarted(dataStream);
+    emit(TransmissionStarted(dataStream));
   }
 
-  Stream<RemoState> _stopTransmission() async* {
-    yield StoppingTransmission();
+  void _stopTransmission(OnStopTransmission _, Emitter<RemoState> emit) async {
+    emit(StoppingTransmission());
     isTransmissionEnabled = false;
     remoStreamSubscription.cancel();
-    yield TransmissionStopped();
+    emit(TransmissionStopped());
   }
 
-  Stream<RemoState> _resetTransmission() async* {
+  void _resetTransmission(
+      OnResetTransmission _, Emitter<RemoState> emit) async {
     if (await _bluetooth.isDeviceConnected()) {
-      yield Connected();
+      emit(Connected());
     } else {
-      yield Disconnected();
+      emit(Disconnected());
     }
   }
 

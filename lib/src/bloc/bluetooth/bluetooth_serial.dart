@@ -10,7 +10,7 @@ class BluetoothSerial implements Bluetooth {
   @override
   Stream<DeviceInfos> startDiscovery() {
     StreamController<DeviceInfos> infoStreamController =
-        StreamController<DeviceInfos>();
+        StreamController<DeviceInfos>.broadcast();
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
 
     _bluetoothSerial.startDiscovery().listen((result) {

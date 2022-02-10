@@ -107,7 +107,7 @@ class TurnOnBluetoothStep extends StatelessWidget {
                 },
                 style: TextButton.styleFrom(
                     backgroundColor: Theme.of(context).accentColor),
-                child: Text('CONNECT'),
+                child: Text('SCAN'),
               ),
             ],
           ),

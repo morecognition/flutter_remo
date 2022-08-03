@@ -92,8 +92,10 @@ class TurnOnBluetoothStep extends StatelessWidget {
               SizedBox(height: 20),
               TextButton(
                 onPressed: () async {
-                  if (await Permission.locationWhenInUse.request().isGranted &&
-                      await Permission.bluetooth.request().isGranted) {
+                  var bluetoothScan = await Permission.bluetoothScan.request();
+                  var bluetoothConnect =
+                      await Permission.bluetoothConnect.request();
+                  if (bluetoothScan.isGranted && bluetoothConnect.isGranted) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -102,6 +104,23 @@ class TurnOnBluetoothStep extends StatelessWidget {
                           child: BluetoothStep(),
                         ),
                       ),
+                    );
+                  } else {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Bluetooth permisison'),
+                          content: const Text(
+                              'Remo needs Bluetooth permissions in order to connect with the device.'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, 'OK'),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   }
                 },

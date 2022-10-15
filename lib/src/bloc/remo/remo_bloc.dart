@@ -109,6 +109,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
+            dataController.close();
+            remoDataStream = null;
             emit(Disconnected());
             break;
           case ConnectionStates.connected:
@@ -134,71 +136,75 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
 
-    // Getting data from Remo.
-    remoStreamSubscription = remoDataStream.listen(
-      (dataBytes) {
-        if (isTransmissionEnabled && dataBytes.length == 41) {
-          ByteData byteArray = dataBytes.buffer.asByteData();
-          // Converting the data coming from Remo.
-          //// EMG.
-          List<double> emg = List.filled(channels, 0);
-          for (int byteIndex = 8, emgIndex = 0;
-              emgIndex < channels;
-              byteIndex += 2, ++emgIndex) {
-            switch (transmissionMode) {
-              case TransmissionMode.rms:
-                emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
-                break;
-              case TransmissionMode.rawImu:
-                emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
-                break;
+    if(remoDataStream != null) {
+      // Getting data from Remo.
+      remoStreamSubscription = remoDataStream!.listen(
+            (dataBytes) {
+          if (isTransmissionEnabled && dataBytes.length == 41) {
+            ByteData byteArray = dataBytes.buffer.asByteData();
+            // Converting the data coming from Remo.
+            //// EMG.
+            List<double> emg = List.filled(channels, 0);
+            for (int byteIndex = 8, emgIndex = 0;
+            emgIndex < channels;
+            byteIndex += 2, ++emgIndex) {
+              switch (transmissionMode) {
+                case TransmissionMode.rms:
+                  emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
+                  break;
+                case TransmissionMode.rawImu:
+                  emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
+                  break;
+              }
             }
-          }
-          //// Accelerometer.
-          //// Gyroscope.
-          //// Magnetometer.
-          // Number 3 is because we are considering accelerations in the 3 dimensions of space.
-          List<double> acceleration = List.filled(3, 0);
-          List<double> angularVelocity = List.filled(3, 0);
-          List<double> magneticField = List.filled(3, 0);
-          for (int byteIndex = 24, index = 0;
-              index < 3;
-              byteIndex += 2, ++index) {
-            acceleration[index] = byteArray.getInt16(byteIndex) / 100;
-            angularVelocity[index] = byteArray.getInt16(byteIndex + 6) / 100;
-            magneticField[index] = byteArray.getInt16(byteIndex + 12) / 100;
-          }
+            //// Accelerometer.
+            //// Gyroscope.
+            //// Magnetometer.
+            // Number 3 is because we are considering accelerations in the 3 dimensions of space.
+            List<double> acceleration = List.filled(3, 0);
+            List<double> angularVelocity = List.filled(3, 0);
+            List<double> magneticField = List.filled(3, 0);
+            for (int byteIndex = 24, index = 0;
+            index < 3;
+            byteIndex += 2, ++index) {
+              acceleration[index] = byteArray.getInt16(byteIndex) / 100;
+              angularVelocity[index] = byteArray.getInt16(byteIndex + 6) / 100;
+              magneticField[index] = byteArray.getInt16(byteIndex + 12) / 100;
+            }
 
-          /// Finally.
-          dataController.add(
-            RemoData(
-              emg: emg,
-              acceleration: Vector3(
-                acceleration[0],
-                acceleration[1],
-                acceleration[2],
+            /// Finally.
+            dataController.add(
+              RemoData(
+                emg: emg,
+                acceleration: Vector3(
+                  acceleration[0],
+                  acceleration[1],
+                  acceleration[2],
+                ),
+                angularVelocity: Vector3(
+                  angularVelocity[0],
+                  angularVelocity[1],
+                  angularVelocity[2],
+                ),
+                magneticField: Vector3(
+                  magneticField[0],
+                  magneticField[1],
+                  magneticField[2],
+                ),
               ),
-              angularVelocity: Vector3(
-                angularVelocity[0],
-                angularVelocity[1],
-                angularVelocity[2],
-              ),
-              magneticField: Vector3(
-                magneticField[0],
-                magneticField[1],
-                magneticField[2],
-              ),
-            ),
-          );
-        }
-      },
-      onDone: () {
-        dataController.close();
-      },
-    );
+            );
+          }
+        },
+        onDone: () {
+          dataController.close();
+        },
+      );
 
-    isTransmissionEnabled = true;
-    emit(TransmissionStarted(dataStream));
+      isTransmissionEnabled = true;
+      emit(TransmissionStarted(dataStream));
+    }else{
+      emit(ConnectionError());
+    }
   }
 
   void _stopTransmission(OnStopTransmission _, Emitter<RemoState> emit) async {
@@ -231,7 +237,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   final Bluetooth _bluetooth = Bluetooth();
 
   /// The stream of data coming directly from the Remo device.
-  late final Stream<Uint8List> remoDataStream;
+  Stream<Uint8List>? remoDataStream;
 
   /// Flag to enable/disable the stream of parsed data.
   bool isTransmissionEnabled = false;

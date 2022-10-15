@@ -109,6 +109,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
         switch (state) {
           case ConnectionStates.disconnected:
+            isTransmissionEnabled = false;
+            remoStreamSubscription?.cancel();
             dataController.close();
             remoDataStream = null;
             emit(Disconnected());
@@ -210,7 +212,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   void _stopTransmission(OnStopTransmission _, Emitter<RemoState> emit) async {
     emit(StoppingTransmission());
     isTransmissionEnabled = false;
-    remoStreamSubscription.cancel();
+    remoStreamSubscription?.cancel();
     emit(TransmissionStopped());
   }
 
@@ -227,7 +229,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const int channels = 8;
 
   // Stream subscription handler.
-  late StreamSubscription<Uint8List> remoStreamSubscription;
+  StreamSubscription<Uint8List>? remoStreamSubscription;
   // The controller for the stream to pass to the UI.
   StreamController<RemoData> dataController = StreamController<RemoData>();
   // The stream to pass to the UI.

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/src/bloc/bluetooth/bluetooth.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:vector_math/vector_math.dart';
 
 part 'remo_event.dart';
@@ -34,6 +35,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// Connects to a specific devices. The name is given by the select device event.
   void _startConnecting(OnConnectDevice event, Emitter<RemoState> emit) async {
     emit(Connecting());
+    await Permission.bluetoothConnect.request();
+    await Permission.bluetoothScan.request();
+    await Permission.bluetooth.request();
+    await Permission.locationWhenInUse.request();
     try {
       await for (ConnectionStates state
           in _bluetooth.startConnection(event.address)) {

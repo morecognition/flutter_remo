@@ -5,32 +5,32 @@ import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
 
 part 'remo_file_event.dart';
 part 'remo_file_state.dart';
 
 class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
-  RemoFileBloc(this.remoDataStream) : super(RemoFileInitial()) {
-    on<InitRemoFiles>(_init);
+  RemoFileBloc() : super(RemoFileInitial()) {
     on<StartRecording>(_startRecording);
     on<StopRecording>(_stopRecording);
     on<DiscardRecord>(_discardRecord);
     on<SaveRecord>(_saveRecord);
+    on<Reset>(_reset);
   }
 
-  void _init(InitRemoFiles event, Emitter<RemoFileState> emit) async {
+  void _startRecording(
+      StartRecording event, Emitter<RemoFileState> emit) async {
     tmpDirectory = await getTemporaryDirectory();
     var directory = await getExternalStorageDirectory();
-    if (directory == null) {
-      emit(RemoFileInitError());
-    } else {
+    if (directory != null) {
       externalStorageDirectory = directory;
+      var uuid = Uuid();
+      var tmpFileName = uuid.v4();
       tmpFilePath = tmpDirectory.path + '/$tmpFileName.csv';
-      emit(RemoFileReady());
     }
-  }
+    remoDataStream = event.remoDataStream;
 
-  void _startRecording(StartRecording event, Emitter<RemoFileState> emit) {
     File tmpCsvFile = File(tmpFilePath);
     fileSink = tmpCsvFile.openWrite();
     remoStreamSubscription = remoDataStream.listen(
@@ -44,7 +44,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   void _stopRecording(StopRecording event, Emitter<RemoFileState> emit) {
     remoStreamSubscription.cancel();
     fileSink.close();
-    emit(RecordingComplete());
+    emit(RecordingComplete(File(tmpFilePath)));
   }
 
   void _discardRecord(DiscardRecord event, Emitter<RemoFileState> emit) {
@@ -61,11 +61,15 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     emit(RemoFileReady());
   }
 
-  final Stream<RemoData> remoDataStream;
+  void _reset(Reset event, Emitter<RemoFileState> emit) async {
+    remoStreamSubscription.cancel();
+    emit(RemoFileInitial());
+  }
+
+  late Stream<RemoData> remoDataStream;
   late StreamSubscription<RemoData> remoStreamSubscription;
   late IOSink fileSink;
   late String tmpFilePath;
-  late final Directory tmpDirectory;
-  late final Directory externalStorageDirectory;
-  final String tmpFileName = 'tmpFileName';
+  late Directory tmpDirectory;
+  late Directory externalStorageDirectory;
 }

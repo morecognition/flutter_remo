@@ -86,6 +86,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             _bluetooth.sendMessage(message2);
 
             remoDataStream = _bluetooth.getInputStream()!;
+            _startTransmission(OnStartTransmission(), emit);
 
             emit(Connected());
             break;
@@ -143,18 +144,21 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
 
-    if(remoDataStream != null) {
+    dataController = StreamController<RemoData>();
+    dataStream = dataController.stream.asBroadcastStream();
+
+    if (remoDataStream != null) {
       // Getting data from Remo.
       remoStreamSubscription = remoDataStream!.listen(
-            (dataBytes) {
+        (dataBytes) {
           if (isTransmissionEnabled && dataBytes.length == 41) {
             ByteData byteArray = dataBytes.buffer.asByteData();
             // Converting the data coming from Remo.
             //// EMG.
             List<double> emg = List.filled(channels, 0);
             for (int byteIndex = 8, emgIndex = 0;
-            emgIndex < channels;
-            byteIndex += 2, ++emgIndex) {
+                emgIndex < channels;
+                byteIndex += 2, ++emgIndex) {
               switch (transmissionMode) {
                 case TransmissionMode.rms:
                   emg[emgIndex] = byteArray.getUint16(byteIndex) / 1000;
@@ -172,8 +176,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             List<double> angularVelocity = List.filled(3, 0);
             List<double> magneticField = List.filled(3, 0);
             for (int byteIndex = 24, index = 0;
-            index < 3;
-            byteIndex += 2, ++index) {
+                index < 3;
+                byteIndex += 2, ++index) {
               acceleration[index] = byteArray.getInt16(byteIndex) / 100;
               angularVelocity[index] = byteArray.getInt16(byteIndex + 6) / 100;
               magneticField[index] = byteArray.getInt16(byteIndex + 12) / 100;
@@ -209,7 +213,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
       isTransmissionEnabled = true;
       emit(TransmissionStarted(dataStream));
-    }else{
+    } else {
       emit(ConnectionError());
     }
   }
@@ -236,9 +240,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   // Stream subscription handler.
   StreamSubscription<Uint8List>? remoStreamSubscription;
   // The controller for the stream to pass to the UI.
-  StreamController<RemoData> dataController = StreamController<RemoData>();
+  late StreamController<RemoData> dataController;
   // The stream to pass to the UI.
-  late Stream<RemoData> dataStream = dataController.stream.asBroadcastStream();
+  late Stream<RemoData> dataStream;
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();

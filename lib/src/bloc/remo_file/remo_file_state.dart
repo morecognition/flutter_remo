@@ -11,7 +11,10 @@ class RemoFileReady extends RemoFileState {}
 
 class Recording extends RemoFileState {}
 
-class RecordingComplete extends RemoFileState {}
+class RecordingComplete extends RemoFileState {
+  RecordingComplete(this.file);
+  final File file;
+}
 
 class RecordDiscarded extends RemoFileState {}
 

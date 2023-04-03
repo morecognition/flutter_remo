@@ -3,9 +3,11 @@ part of 'remo_file_bloc.dart';
 @immutable
 abstract class RemoFileEvent {}
 
-class InitRemoFiles extends RemoFileEvent {}
+class StartRecording extends RemoFileEvent {
+  final Stream<RemoData> remoDataStream;
 
-class StartRecording extends RemoFileEvent {}
+  StartRecording(this.remoDataStream);
+}
 
 class StopRecording extends RemoFileEvent {}
 
@@ -15,3 +17,5 @@ class SaveRecord extends RemoFileEvent {
 }
 
 class DiscardRecord extends RemoFileEvent {}
+
+class Reset extends RemoFileEvent {}

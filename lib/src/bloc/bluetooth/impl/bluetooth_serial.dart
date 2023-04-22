@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 
-import 'bluetooth.dart';
+import '../bluetooth.dart';
 
 /// Implementation of the abstract class Bluetooth which uses the Flutter Bluetooth Serial library.
 class BluetoothSerial implements Bluetooth {

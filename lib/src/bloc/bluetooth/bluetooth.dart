@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'bluetooth_serial.dart';
+import 'package:flutter_remo/src/bloc/bluetooth/impl/bluetooth_reactive_ble.dart';
+
+import 'impl/bluetooth_serial.dart';
 
 /// Template used by a class used to discover Bluetooth devices and connect to them. Made to decouple the application from the Bluetooth library used.
 abstract class Bluetooth {
@@ -23,7 +25,8 @@ abstract class Bluetooth {
   Future<bool> isDeviceConnected();
 
   factory Bluetooth() {
-    return BluetoothSerial();
+    //return BluetoothSerial();
+    return BluetoothReactiveBLE();
   }
 }
 

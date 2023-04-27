@@ -12,11 +12,11 @@ part 'remo_state.dart';
 
 /// Allows the pairing and connection with a Remo device
 class RemoBloc extends Bloc<RemoEvent, RemoState> {
-  const int rmsDataCode = 44; // D
-  const int identifierDataCode = 63; // ?
-  const int realtimeDataCode = 82; // R
-  const int aquisitionModeDataCode = 83; // S
-  const int activateSensorModeDataCode = 65; // A
+  static const int rmsDataCode = 44; // D
+  static const int identifierDataCode = 63; // ?
+  static const int realtimeDataCode = 82; // R
+  static const int acquisitionModeDataCode = 83; // S
+  static const int activateSensorModeDataCode = 65; // A
 
   // Remo's emg channels.
   static const int channels = 8;
@@ -127,7 +127,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     // send sensor aquisition message
     List<int> message = [
       identifierDataCode, // ?
-      aquisitionModeDataCode, // S
+      acquisitionModeDataCode, // S
       0000, // counter
       00
     ];

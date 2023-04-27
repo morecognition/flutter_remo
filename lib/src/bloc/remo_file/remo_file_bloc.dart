@@ -22,7 +22,12 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   void _startRecording(
       StartRecording event, Emitter<RemoFileState> emit) async {
     tmpDirectory = await getTemporaryDirectory();
-    var directory = await getExternalStorageDirectory();
+    Directory? directory;
+    if(Platform.isAndroid) {
+      directory = await getExternalStorageDirectory();
+    } else if(Platform.isIOS) {
+      directory = await getApplicationDocumentsDirectory();
+    }
     if (directory != null) {
       externalStorageDirectory = directory;
       var uuid = Uuid();

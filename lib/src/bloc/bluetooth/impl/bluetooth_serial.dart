@@ -6,7 +6,7 @@ import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
 import '../bluetooth.dart';
 
 /// Implementation of the abstract class Bluetooth which uses the Flutter Bluetooth Serial library.
-class BluetoothSerial implements Bluetooth {
+/*class BluetoothSerial implements Bluetooth {
   @override
   Stream<DeviceInfos> startDiscovery() {
     StreamController<DeviceInfos> infoStreamController =
@@ -26,6 +26,16 @@ class BluetoothSerial implements Bluetooth {
     }, onDone: () => infoStreamController.close());
 
     return namesStream;
+  }
+
+  @override
+  Future<bool> sendAsyncMessage(Uint8List message) async{
+    try {
+      _connectedDevice.output.add(message);
+    } on StateError {
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -51,8 +61,9 @@ class BluetoothSerial implements Bluetooth {
   }
 
   @override
-  Stream<Uint8List>? getInputStream() {
-    return _connectedDevice.input?.asBroadcastStream();
+  Stream<List<int>>? getInputStream() {
+    //return _connectedDevice.input?.asBroadcastStream();
+    return null;
   }
 
   /// Allows to send a message to the connected device.
@@ -98,4 +109,4 @@ class BluetoothSerial implements Bluetooth {
   late BluetoothConnection _connectedDevice;
 
   FlutterBluetoothSerial _bluetoothSerial = FlutterBluetoothSerial.instance;
-}
+}*/

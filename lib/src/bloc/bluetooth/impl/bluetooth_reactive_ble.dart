@@ -17,8 +17,9 @@ class BluetoothReactiveBLE implements Bluetooth {
 
   late StreamSubscription<ConnectionStateUpdate> _connection;
   late Stream<ConnectionStateUpdate> _currentConnectionStream;
-  late Stream<Uint8List> _receivedDataStream;
+  late Stream<List<int>> _receivedDataStream;
   late QualifiedCharacteristic _txCharacteristic;
+  late QualifiedCharacteristic _rxCharacteristic;
   bool _scanning = false;
   bool _connected = false;
 
@@ -26,7 +27,9 @@ class BluetoothReactiveBLE implements Bluetooth {
   final flutterReactiveBle = FlutterReactiveBle();
   final Uuid _remoServiceUUID = Uuid.parse(
       "49535343-fe7d-4ae5-8fa9-9fafd205e455");
-  final Uuid _remoCharacteristicRxTxUUID = Uuid.parse(
+  final Uuid _remoCharacteristicTxUUID = Uuid.parse(
+      "49535343-8841-43f4-a8d4-ecbe34729bb3");
+  final Uuid _remoCharacteristicRxUUID = Uuid.parse(
       "49535343-1e4d-4bd9-ba61-23c647249616");
 
   // ONLY FOR TEST
@@ -36,20 +39,31 @@ class BluetoothReactiveBLE implements Bluetooth {
 
 
   @override
-  Stream<Uint8List>? getInputStream() {
+  Stream<List<int>>? getInputStream() {
     return _receivedDataStream;
   }
 
   @override
   Future<bool> isDeviceConnected() {
-    return  Future.value(_connected);
+    return Future.value(_connected);
   }
 
   @override
-  bool sendMessage(Uint8List message) {
-    if(_txCharacteristic != null) {
+  Future<bool> sendAsyncMessage(List<int> message) async {
+    if (_txCharacteristic != null) {
+      await flutterReactiveBle.writeCharacteristicWithResponse(
+          _txCharacteristic, value: message).onError((error, stackTrace) =>
+          print(error));
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  bool sendMessage(List<int> message) {
+    if (_txCharacteristic != null) {
       flutterReactiveBle.writeCharacteristicWithoutResponse(
-          _txCharacteristic, value: message);
+          _txCharacteristic!, value: message);
       return true;
     }
     return false;
@@ -61,7 +75,11 @@ class BluetoothReactiveBLE implements Bluetooth {
     StreamController<ConnectionStates> connectionStatesController =
     StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
-    _currentConnectionStream = flutterReactiveBle.connectToDevice(id: androidDeviceID);
+    _currentConnectionStream = flutterReactiveBle.connectToAdvertisingDevice(
+        id: androidDeviceID,
+        withServices: [],
+        prescanDuration: const Duration(seconds: 5),
+        connectionTimeout: const Duration(seconds: 90));
 
     _connection = _currentConnectionStream.listen((event) {
       var id = event.deviceId.toString();
@@ -71,10 +89,21 @@ class BluetoothReactiveBLE implements Bluetooth {
           connectionStatesController.add(ConnectionStates.connecting);
           break;
         case DeviceConnectionState.connected:
-          connectionStatesController.add(ConnectionStates.connected);
           _connected = true;
-          _txCharacteristic = QualifiedCharacteristic(serviceId: _remoServiceUUID, characteristicId: _remoCharacteristicRxTxUUID, deviceId: event.deviceId);
-          _receivedDataStream = flutterReactiveBle.subscribeToCharacteristic(_txCharacteristic).map((event) => event as Uint8List);
+          flutterReactiveBle.statusStream.listen((event) {
+            print(event);
+          });
+          _txCharacteristic = QualifiedCharacteristic(
+              serviceId: _remoServiceUUID,
+              characteristicId: _remoCharacteristicTxUUID,
+              deviceId: event.deviceId);
+          _rxCharacteristic = QualifiedCharacteristic(
+              serviceId: _remoServiceUUID,
+              characteristicId: _remoCharacteristicRxUUID,
+              deviceId: event.deviceId);
+          _receivedDataStream =
+              flutterReactiveBle.subscribeToCharacteristic(_rxCharacteristic);
+          connectionStatesController.add(ConnectionStates.connected);
           break;
         case DeviceConnectionState.disconnecting:
           connectionStatesController.add(ConnectionStates.disconnecting);
@@ -110,15 +139,15 @@ class BluetoothReactiveBLE implements Bluetooth {
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
     flutterReactiveBle.scanForDevices(
         withServices: [], scanMode: ScanMode.lowLatency).listen((device) {
-          if(device.name.isNotEmpty && device.name.startsWith("REMO")) {
-            infoStreamController.add(
-              DeviceInfos(
-                device.name,
-                device.name, // to do change with mac address
-              ),
-            );
-            print("Trovato Remo con id: ${device.id}");
-          }
+      if (device.name.isNotEmpty && device.name.startsWith("REMO")) {
+        infoStreamController.add(
+          DeviceInfos(
+            device.name,
+            device.id,
+          ),
+        );
+        print("Trovato Remo con id: ${device.id}");
+      }
     }, onDone: () => infoStreamController.close());
     return namesStream;
   }

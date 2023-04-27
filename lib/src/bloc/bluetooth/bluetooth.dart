@@ -14,13 +14,15 @@ abstract class Bluetooth {
   Stream<ConnectionStates> startConnection(String address);
 
   /// Gets the stream containing data coming from the Bluetooth device.
-  Stream<Uint8List>? getInputStream();
+  Stream<List<int>>? getInputStream();
 
   /// Starts disconnecting a previously connected Bluetooth device.
   Stream<ConnectionStates> startDisconnection();
 
   /// Sends a message to a previously connected Bluetooth device.
-  bool sendMessage(Uint8List message);
+  bool sendMessage(List<int> message);
+
+  Future<bool> sendAsyncMessage(List<int> message);
 
   Future<bool> isDeviceConnected();
 

@@ -193,7 +193,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             );
           }
           // send ack
-          fianal ack = _buildACKMessage(dataBytes);
+          final ack = _buildACKMessage(dataBytes);
           _bluetooth.sendMessage(ack);
         },
         onError: (error) {
@@ -216,7 +216,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       final ok = [2, 79, 75]; // OK
       var ack = message.take(
           3); // take identifier, command and counter from message
-      return ack..addAll(ok); // return ack + ok
+      return List.from(ack)..addAll(ok); // return ack + ok
     }
     return message;
   }

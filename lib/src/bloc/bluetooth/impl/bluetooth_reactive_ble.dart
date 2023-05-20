@@ -34,7 +34,7 @@ class BluetoothReactiveBLE implements Bluetooth {
 
   // ONLY FOR TEST
   // todo remeve them
-  final String androidDeviceID = "44:B7:D0:79:5C:39";
+  final String androidDeviceID = "44:B7:D0:79:5C:47";
   final String iosDeviceID = "36019A2B-85D8-8B8D-4A89-ED245D55A7A5";
 
 
@@ -90,9 +90,6 @@ class BluetoothReactiveBLE implements Bluetooth {
           break;
         case DeviceConnectionState.connected:
           _connected = true;
-          flutterReactiveBle.statusStream.listen((event) {
-            print(event);
-          });
           _txCharacteristic = QualifiedCharacteristic(
               serviceId: _remoServiceUUID,
               characteristicId: _remoCharacteristicTxUUID,
@@ -103,6 +100,18 @@ class BluetoothReactiveBLE implements Bluetooth {
               deviceId: event.deviceId);
           _receivedDataStream =
               flutterReactiveBle.subscribeToCharacteristic(_rxCharacteristic);
+          _receivedDataStream.listen((event) {
+            print("BLE stream -> $event");}
+          ).onError((error) {
+            print("BLE stream error-> $error");}
+          );
+            flutterReactiveBle.writeCharacteristicWithoutResponse(_txCharacteristic, value: [
+              63, // ?
+              83, // S
+              0, // counter
+              0,
+              0
+            ]);
           connectionStatesController.add(ConnectionStates.connected);
           break;
         case DeviceConnectionState.disconnecting:
@@ -150,5 +159,10 @@ class BluetoothReactiveBLE implements Bluetooth {
       }
     }, onDone: () => infoStreamController.close());
     return namesStream;
+  }
+
+  @override
+  Future<List<int>> readData() async{
+    return flutterReactiveBle.readCharacteristic(_rxCharacteristic);
   }
 }

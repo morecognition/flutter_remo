@@ -12,11 +12,12 @@ part 'remo_state.dart';
 
 /// Allows the pairing and connection with a Remo device
 class RemoBloc extends Bloc<RemoEvent, RemoState> {
-  static const int rmsDataCode = 44; // D
+  static const int rmsDataCode = 68; // D
   static const int identifierDataCode = 63; // ?
   static const int realtimeDataCode = 82; // R
   static const int acquisitionModeDataCode = 83; // S
   static const int activateSensorModeDataCode = 65; // A
+  static const int headerLength = 8; // 8byte
 
   // Remo's emg channels.
   static const int channels = 8;
@@ -59,15 +60,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             emit(Disconnected());
             break;
           case ConnectionStates.connected:
-          Uint8List message = Uint8List.fromList([
-              63, // ?
-              65, // A
-              0001, // counter
-              02, //
-              68, // D ( RMS )
-            ]);
-            await _bluetooth.sendMessage(message);
-            remoDataStream = _bluetooth.getInputStream()!;
+            remoDataStream = await _bluetooth.getInputStream()!;
             _startTransmission(OnStartTransmission(), emit);
             emit(Connected());
             break;
@@ -123,31 +116,20 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   void _startTransmission(OnStartTransmission _,
       Emitter<RemoState> emit) async {
     emit(StartingTransmission());
-
-    // send sensor aquisition message
-    List<int> message = [
-      identifierDataCode, // ?
-      acquisitionModeDataCode, // S
-      0000, // counter
-      00
-    ];
-    _bluetooth.sendMessage(message);
-    await _bluetooth.sendMessage(message);
-
     dataController = StreamController<RemoData>();
     dataStream = dataController.stream.asBroadcastStream();
 
     if (remoDataStream != null) {
       // Getting data from Remo.
-      remoStreamSubscription = remoDataStream!.listen(
+      remoStreamSubscription = remoDataStream?.listen(
             (dataBytes) {
-          print("Sto leggendo ${dataBytes.toString()} bytes");
-          if (dataBytes.isNotEmpty && dataBytes.first == rmsDataCode) {
-            ByteData byteArray = Uint8List
-                .fromList(dataBytes)
-                .buffer
-                .asByteData();
-            // Converting the data coming from Remo.
+              final data = Uint8List.fromList(dataBytes);
+          print("Sto leggendo ${data.toString()} bytes");
+          if (data.isNotEmpty && data.first == rmsDataCode && data.length >=headerLength) {
+            final header = data.take(headerLength);
+            ByteData byteArray = data.sublist(headerLength - 1).buffer.asByteData(); // take only data
+
+           // Converting the data coming from Remo.
             //// EMG.
             List<double> emg = List.filled(channels, 0);
             for (int byteIndex = 8, emgIndex = 0;
@@ -155,6 +137,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             byteIndex += 4, ++emgIndex) {
               emg[emgIndex] = byteArray.getInt32(byteIndex) / 1000;
             }
+
+            print("EMG -> $emg");
             //// Accelerometer.
             //// Gyroscope.
             //// Magnetometer.
@@ -192,18 +176,27 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
               ),
             );
           }
+
           // send ack
-          final ack = _buildACKMessage(dataBytes);
-          _bluetooth.sendMessage(ack);
+          final ack = _buildACKMessage(Uint8List
+              .fromList(dataBytes));
+          print("--- Sending ack to device ---");
+          _bluetooth.sendMessage(Uint8List.fromList(ack));
         },
         onError: (error) {
-          print("Errore subscribe");
+          print("Subscribe error");
         },
         onDone: () {
           dataController.close();
         },
       );
 
+      // send acquisition mode message
+      print("--- Sending acquisition mode message ---");
+      final message = "?S000000".codeUnits;
+      _bluetooth.sendMessage(Uint8List.fromList(message));
+
+      // emit transmission started
       emit(TransmissionStarted(dataStream));
     } else {
       emit(ConnectionError());
@@ -211,11 +204,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   }
 
 
-  List<int> _buildACKMessage(List<int> message) {
-    if (message.length >= 3) {
-      final ok = [2, 79, 75]; // OK
+  List<int> _buildACKMessage(Uint8List message) {
+    if (message.length >= headerLength) {
+      final ok = [48,50,79, 75]; // 02 + OK
       var ack = message.take(
-          3); // take identifier, command and counter from message
+          headerLength - 2); // take identifier, command and counter from message
+      print("ack header -> ${String.fromCharCodes(ack)}");
       return List.from(ack)..addAll(ok); // return ack + ok
     }
     return message;

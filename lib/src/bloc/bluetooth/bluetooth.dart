@@ -20,7 +20,7 @@ abstract class Bluetooth {
   Stream<ConnectionStates> startDisconnection();
 
   /// Sends a message to a previously connected Bluetooth device.
-  bool sendMessage(List<int> message);
+  bool sendMessage(Uint8List message);
 
   Future<bool> sendAsyncMessage(List<int> message);
 

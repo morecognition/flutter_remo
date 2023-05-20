@@ -17,10 +17,8 @@ class BluetoothReactiveBLE implements Bluetooth {
 
   late StreamSubscription<ConnectionStateUpdate> _connection;
   late Stream<ConnectionStateUpdate> _currentConnectionStream;
-  late Stream<List<int>> _receivedDataStream;
   late QualifiedCharacteristic _txCharacteristic;
   late QualifiedCharacteristic _rxCharacteristic;
-  bool _scanning = false;
   bool _connected = false;
 
 
@@ -35,12 +33,12 @@ class BluetoothReactiveBLE implements Bluetooth {
   // ONLY FOR TEST
   // todo remeve them
   final String androidDeviceID = "44:B7:D0:79:5C:47";
-  final String iosDeviceID = "36019A2B-85D8-8B8D-4A89-ED245D55A7A5";
+  final String iosDeviceID = "076CF17C-AB4B-0F12-9622-839A3338316F";
 
 
   @override
-  Stream<List<int>>? getInputStream() {
-    return _receivedDataStream;
+  Stream<List<int>>? getInputStream(){
+    return flutterReactiveBle.subscribeToCharacteristic(_rxCharacteristic);
   }
 
   @override
@@ -60,10 +58,11 @@ class BluetoothReactiveBLE implements Bluetooth {
   }
 
   @override
-  bool sendMessage(List<int> message) {
+  bool sendMessage(Uint8List  message) {
     if (_txCharacteristic != null) {
+      print("send data to device ->  $message - ${String.fromCharCodes(message)}");
       flutterReactiveBle.writeCharacteristicWithoutResponse(
-          _txCharacteristic!, value: message);
+          _txCharacteristic, value: message);
       return true;
     }
     return false;
@@ -76,7 +75,7 @@ class BluetoothReactiveBLE implements Bluetooth {
     StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
     _currentConnectionStream = flutterReactiveBle.connectToAdvertisingDevice(
-        id: androidDeviceID,
+        id: iosDeviceID,
         withServices: [],
         prescanDuration: const Duration(seconds: 5),
         connectionTimeout: const Duration(seconds: 90));
@@ -98,20 +97,6 @@ class BluetoothReactiveBLE implements Bluetooth {
               serviceId: _remoServiceUUID,
               characteristicId: _remoCharacteristicRxUUID,
               deviceId: event.deviceId);
-          _receivedDataStream =
-              flutterReactiveBle.subscribeToCharacteristic(_rxCharacteristic);
-          _receivedDataStream.listen((event) {
-            print("BLE stream -> $event");}
-          ).onError((error) {
-            print("BLE stream error-> $error");}
-          );
-            flutterReactiveBle.writeCharacteristicWithoutResponse(_txCharacteristic, value: [
-              63, // ?
-              83, // S
-              0, // counter
-              0,
-              0
-            ]);
           connectionStatesController.add(ConnectionStates.connected);
           break;
         case DeviceConnectionState.disconnecting:

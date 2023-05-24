@@ -22,7 +22,7 @@ abstract class Bluetooth {
   /// Sends a message to a previously connected Bluetooth device.
   bool sendMessage(Uint8List message);
 
-  Future<bool> sendAsyncMessage(List<int> message);
+  Future<bool> sendAsyncMessage(Uint8List message);
 
   Future<bool> isDeviceConnected();
 

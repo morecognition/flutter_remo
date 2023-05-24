@@ -132,10 +132,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
            // Converting the data coming from Remo.
             //// EMG.
             List<double> emg = List.filled(channels, 0);
-            for (int byteIndex = 8, emgIndex = 0;
+            for (int byteIndex = 0, emgIndex = 0;
             emgIndex < channels;
-            byteIndex += 4, ++emgIndex) {
-              emg[emgIndex] = byteArray.getInt32(byteIndex) / 1000;
+            byteIndex += 2, ++emgIndex) {
+              emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
             }
 
             print("EMG -> $emg");

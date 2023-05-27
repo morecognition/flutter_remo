@@ -30,14 +30,9 @@ class BluetoothReactiveBLE implements Bluetooth {
   final Uuid _remoCharacteristicRxUUID = Uuid.parse(
       "49535343-1e4d-4bd9-ba61-23c647249616");
 
-  // ONLY FOR TEST
-  // todo remeve them
-  final String androidDeviceID = "FC:0F:E7:B5:F1:3A";
-  final String iosDeviceID = "076CF17C-AB4B-0F12-9622-839A3338316F";
-
 
   @override
-  Stream<List<int>>? getInputStream(){
+  Stream<List<int>>? getInputStream() {
     return flutterReactiveBle.subscribeToCharacteristic(_rxCharacteristic);
   }
 
@@ -55,57 +50,75 @@ class BluetoothReactiveBLE implements Bluetooth {
   }
 
   @override
-  bool sendMessage(Uint8List  message) {
-    print("send data to device ->  $message - ${String.fromCharCodes(message)}");
+  bool sendMessage(Uint8List message) {
+    print(
+        "send data to device ->  $message - ${String.fromCharCodes(message)}");
     flutterReactiveBle.writeCharacteristicWithoutResponse(
         _txCharacteristic, value: message);
     return true;
   }
 
   @override
-  Stream<ConnectionStates> startConnection(String address) {
+  Future<Stream<ConnectionStates>> startConnection(String address) async {
     // Init connection state stream.
-    //startDiscovery();
     StreamController<ConnectionStates> connectionStatesController =
     StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
-    flutterReactiveBle.requestMtu(deviceId: androidDeviceID, mtu: 240);
-    _currentConnectionStream = flutterReactiveBle.connectToAdvertisingDevice(
-        id: androidDeviceID,
-        withServices: [_remoServiceUUID],
-        prescanDuration: const Duration(seconds: 5),
-        connectionTimeout: const Duration(seconds: 90));
+    try {
+      // try to scan
+      final device = await flutterReactiveBle.scanForDevices(
+          withServices: [_remoServiceUUID], scanMode: ScanMode.lowLatency)
+          .timeout(Duration(seconds: 10))
+          .firstWhere((element) => element.name.startsWith("More"),
+          orElse: null);
 
-    _connection = _currentConnectionStream.listen((event) {
-      var id = event.deviceId.toString();
-      print(id);
-      switch (event.connectionState) {
-        case DeviceConnectionState.connecting:
-          connectionStatesController.add(ConnectionStates.connecting);
-          break;
-        case DeviceConnectionState.connected:
-          _connected = true;
-          _txCharacteristic = QualifiedCharacteristic(
-              serviceId: _remoServiceUUID,
-              characteristicId: _remoCharacteristicTxUUID,
-              deviceId: event.deviceId);
-          _rxCharacteristic = QualifiedCharacteristic(
-              serviceId: _remoServiceUUID,
-              characteristicId: _remoCharacteristicRxUUID,
-              deviceId: event.deviceId);
-          connectionStatesController.add(ConnectionStates.connected);
-          break;
-        case DeviceConnectionState.disconnecting:
-          connectionStatesController.add(ConnectionStates.disconnecting);
-          break;
-        case DeviceConnectionState.disconnected:
-          connectionStatesController.add(ConnectionStates.disconnected);
-          break;
+      if (device != null) {
+        // connect to device
+        _currentConnectionStream =
+            flutterReactiveBle.connectToAdvertisingDevice(
+                id: device.id,
+                withServices: [_remoServiceUUID],
+                prescanDuration: const Duration(seconds: 5),
+                connectionTimeout: const Duration(seconds: 90));
+
+        _connection = _currentConnectionStream.listen((event) {
+          switch (event.connectionState) {
+            case DeviceConnectionState.connecting:
+              connectionStatesController.add(ConnectionStates.connecting);
+              break;
+            case DeviceConnectionState.connected:
+              _connected = true;
+              // increase MTU
+              flutterReactiveBle.requestMtu(deviceId: device.id, mtu: 150);
+
+              _txCharacteristic = QualifiedCharacteristic(
+                  serviceId: _remoServiceUUID,
+                  characteristicId: _remoCharacteristicTxUUID,
+                  deviceId: event.deviceId);
+              _rxCharacteristic = QualifiedCharacteristic(
+                  serviceId: _remoServiceUUID,
+                  characteristicId: _remoCharacteristicRxUUID,
+                  deviceId: event.deviceId);
+              connectionStatesController.add(ConnectionStates.connected);
+              break;
+            case DeviceConnectionState.disconnecting:
+              connectionStatesController.add(ConnectionStates.disconnecting);
+              break;
+            case DeviceConnectionState.disconnected:
+              connectionStatesController.add(ConnectionStates.disconnected);
+              break;
+          }
+        }, onError: (error) {
+          connectionStatesController.add(ConnectionStates.error);
+          connectionStatesController.close();
+        });
+      } else {
+        connectionStatesController.add(ConnectionStates.disconnected);
       }
-    }, onError: (error) {
-      connectionStatesController.add(ConnectionStates.error);
-      connectionStatesController.close();
-    });
+    }catch(_){
+      connectionStatesController.add(ConnectionStates.disconnected);
+    }
+
     return statesStream;
   }
 
@@ -128,7 +141,8 @@ class BluetoothReactiveBLE implements Bluetooth {
     StreamController<DeviceInfos>.broadcast();
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
     flutterReactiveBle.scanForDevices(
-        withServices: [_remoServiceUUID], scanMode: ScanMode.lowLatency).listen((device) {
+        withServices: [_remoServiceUUID], scanMode: ScanMode.lowLatency)
+        .listen((device) {
       if (device.name.isNotEmpty && device.name.startsWith("More")) {
         infoStreamController.add(
           DeviceInfos(
@@ -143,7 +157,7 @@ class BluetoothReactiveBLE implements Bluetooth {
   }
 
   @override
-  Future<List<int>> readData() async{
+  Future<List<int>> readData() async {
     return flutterReactiveBle.readCharacteristic(_rxCharacteristic);
   }
 }

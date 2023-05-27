@@ -53,8 +53,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     await Permission.bluetooth.request();
     await Permission.locationWhenInUse.request();
     try {
-      await for (ConnectionStates state
-      in _bluetooth.startConnection(event.address)) {
+      await for (ConnectionStates state in await _bluetooth.startConnection(event.address)) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -124,9 +123,16 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       remoStreamSubscription = remoDataStream?.listen(
             (dataBytes) {
               final data = Uint8List.fromList(dataBytes);
-          print("Sto leggendo ${data.toString()} bytes");
+          print("Reading -> ${data.toString()}");
           if (data.isNotEmpty && data.first == rmsDataCode && data.length >=headerLength) {
             final header = data.take(headerLength);
+
+            final declaredMessageSize = int.parse(String.fromCharCodes(data.sublist(6, 8)), radix: 16);
+            final packetSize = dataBytes.length - headerLength;
+
+            print("Header message size -> $declaredMessageSize");
+            print("Message size -> $packetSize");
+
             ByteData byteArray = data.sublist(headerLength - 1).buffer.asByteData(); // take only data
 
            // Converting the data coming from Remo.

@@ -11,7 +11,7 @@ abstract class Bluetooth {
   Stream<DeviceInfos> startDiscovery();
 
   /// Starts the connection with a Bluetooth device, given the address.
-  Stream<ConnectionStates> startConnection(String address);
+  Future<Stream<ConnectionStates>>  startConnection(String address);
 
   /// Gets the stream containing data coming from the Bluetooth device.
   Stream<List<int>>? getInputStream();

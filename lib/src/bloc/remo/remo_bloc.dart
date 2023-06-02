@@ -12,9 +12,10 @@ part 'remo_state.dart';
 
 /// Allows the pairing and connection with a Remo device
 class RemoBloc extends Bloc<RemoEvent, RemoState> {
-  static const int rmsDataCode = 68; // D
-  static const int identifierDataCode = 63; // ?
-  static const int realtimeDataCode = 82; // R
+  static const int RMS_IDENTIFIER_CODE = 68; // D ( RMS data identifier)
+  static const int IMU_IDENTIFIER_CODE = 67; // C ( IMU data identifier)
+  static const int GLOBAL_IDENTIFIER_CODE = 63; // ? (Global identifier)
+  static const int REALTIME_COMMAND_CODE = 82; // R ( Realtime command )
   static const int acquisitionModeDataCode = 83; // S
   static const int activateSensorModeDataCode = 65; // A
   static const int headerLength = 8; // 8byte
@@ -118,14 +119,20 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     dataController = StreamController<RemoData>();
     dataStream = dataController.stream.asBroadcastStream();
 
+    // data buffer used to store data from multiple packets at a time
+    List<int> buffer = [];
+
+    //we want to check if we expect a new data package
+    bool waitingForData = false;
+    int waitingForDataSize = 0;
+
     if (remoDataStream != null) {
       // Getting data from Remo.
       remoStreamSubscription = remoDataStream?.listen(
             (dataBytes) {
               final data = Uint8List.fromList(dataBytes);
           print("Reading -> ${data.toString()}");
-          if (data.isNotEmpty && data.first == rmsDataCode && data.length >=headerLength) {
-            final header = data.take(headerLength);
+          if (data.isNotEmpty && waitingForData == false){
 
             final declaredMessageSize = int.parse(String.fromCharCodes(data.sublist(6, 8)), radix: 16);
             final packetSize = dataBytes.length - headerLength;
@@ -133,61 +140,50 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             print("Header message size -> $declaredMessageSize");
             print("Message size -> $packetSize");
 
-            ByteData byteArray = data.sublist(headerLength - 1).buffer.asByteData(); // take only data
-
-           // Converting the data coming from Remo.
-            //// EMG.
-            List<double> emg = List.filled(channels, 0);
-            for (int byteIndex = 0, emgIndex = 0;
-            emgIndex < channels;
-            byteIndex += 2, ++emgIndex) {
-              emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
+            if(declaredMessageSize > packetSize){
+              // store data into buffer
+              buffer.addAll(dataBytes);
+              // set waiting for data true
+              waitingForData = true;
+              // store data size
+              waitingForDataSize = declaredMessageSize;
+            }else{
+              // we can manage data
+              switch(data.first) {
+                case RMS_IDENTIFIER_CODE:
+                  _manageRMSData(data);
+                  _sendAck(data);
+                  break;
+                case GLOBAL_IDENTIFIER_CODE:
+                  _sendAck(data);
+                  break;
+                default:
+                  print("Unmanaged packet: $data");
+                  _sendAck(data);
+              }
             }
+          }else if(data.isNotEmpty && waitingForData){
+            // store new data into buffer
+            buffer.addAll(dataBytes);
 
-            print("EMG -> $emg");
-            //// Accelerometer.
-            //// Gyroscope.
-            //// Magnetometer.
-            // Number 3 is because we are considering accelerations in the 3 dimensions of space.
-            List<double> acceleration = List.filled(3, 0);
-            List<double> angularVelocity = List.filled(3, 0);
-            List<double> magneticField = List.filled(3, 0);
-            /*for (int byteIndex = 24, index = 0;
-                index < 3;
-                byteIndex += 2, ++index) {
-              acceleration[index] = byteArray.getInt16(byteIndex) / 100;
-              angularVelocity[index] = byteArray.getInt16(byteIndex + 6) / 100;
-              magneticField[index] = byteArray.getInt16(byteIndex + 12) / 100;
-            }*/
+            final bufferSize = buffer.length - headerLength;
 
-            /// Finally.
-            dataController.add(
-              RemoData(
-                emg: emg,
-                acceleration: Vector3(
-                  acceleration[0],
-                  acceleration[1],
-                  acceleration[2],
-                ),
-                angularVelocity: Vector3(
-                  angularVelocity[0],
-                  angularVelocity[1],
-                  angularVelocity[2],
-                ),
-                magneticField: Vector3(
-                  magneticField[0],
-                  magneticField[1],
-                  magneticField[2],
-                ),
-              ),
-            );
+            print("Buffer size -> $bufferSize");
+
+            if(waitingForDataSize == bufferSize){
+                  //manage buffered data
+                if(buffer.first == RMS_IDENTIFIER_CODE) {
+                  _manageRMSData(Uint8List.fromList(buffer));
+                  // todo manage any other data
+                }
+                _sendAck(Uint8List.fromList(buffer));
+                // reset buffer
+                buffer.clear();
+                waitingForData = false;
+                waitingForDataSize = 0;
+            }
           }
 
-          // send ack
-          final ack = _buildACKMessage(Uint8List
-              .fromList(dataBytes));
-          print("--- Sending ack to device ---");
-          _bluetooth.sendMessage(Uint8List.fromList(ack));
         },
         onError: (error) {
           print("Subscribe error");
@@ -209,6 +205,33 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     }
   }
 
+  void _manageRMSData(Uint8List data){
+    ByteData byteArray = data.sublist(headerLength - 1).buffer.asByteData(); // take only data
+
+    // Converting the data coming from Remo.
+    //// EMG.
+    for( int dataIndex = 0; dataIndex < byteArray.lengthInBytes; dataIndex+= channels * 2) {
+      List<double> emg = List.filled(channels, 0);
+      for (int byteIndex = 0, emgIndex = 0;
+      emgIndex < channels;
+      byteIndex += 2, ++emgIndex) {
+        emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
+      }
+
+      print("EMG -> $emg");
+
+      // sends EMG data to app
+      dataController.add(
+        RemoData(
+          emg: emg,
+          acceleration: Vector3(0.0, 0.0, 0.0),
+          angularVelocity: Vector3(0.0, 0.0, 0.0),
+          magneticField: Vector3(0.0, 0.0, 0.0),
+        ),
+      );
+    }
+  }
+
 
   List<int> _buildACKMessage(Uint8List message) {
     if (message.length >= headerLength) {
@@ -219,6 +242,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       return List.from(ack)..addAll(ok); // return ack + ok
     }
     return message;
+  }
+
+  void _sendAck(Uint8List dataBytes){
+    final ack = _buildACKMessage(dataBytes);
+    print("--- Sending ack to device ---");
+    _bluetooth.sendMessage(Uint8List.fromList(ack));
   }
 
   void _stopTransmission(OnStopTransmission _, Emitter<RemoState> emit) async {

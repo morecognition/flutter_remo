@@ -160,6 +160,16 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                   _sendAck(data);
                   break;
                 case GLOBAL_IDENTIFIER_CODE:
+                  if(data.length >= headerLength + 1  && data[1] == acquisitionModeDataCode){
+                    final message = data.sublist(headerLength);
+                    final stringMessage = String.fromCharCodes(message);
+                    print("Data Acquisition response -> $stringMessage");
+                    if(stringMessage.contains("OK")){
+                      _sendAck(data);
+                    }else{
+                      emit(ConnectionError());
+                    }
+                  }
                   _sendAck(data);
                   break;
                 default:
@@ -243,8 +253,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   List<int> _buildACKMessage(Uint8List message) {
     if (message.length >= headerLength) {
       final ok = [48, 50, 79, 75]; // 02 + OK
-      var ack = message.take(headerLength -
-          2); // take identifier, command and counter from message
+      var ack = message.take(headerLength - 2); // take identifier, command and counter from message
       print("ack header -> ${String.fromCharCodes(ack)}");
       return List.from(ack)..addAll(ok); // return ack + ok
     }

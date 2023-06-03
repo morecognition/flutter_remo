@@ -54,7 +54,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     await Permission.bluetooth.request();
     await Permission.locationWhenInUse.request();
     try {
-      await for (ConnectionStates state in await _bluetooth.startConnection(event.address)) {
+      await for (ConnectionStates state
+          in await _bluetooth.startConnection(event.address)) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -82,8 +83,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   }
 
   /// Disconnects the device.
-  void _startDisconnecting(OnDisconnectDevice event,
-      Emitter<RemoState> emit) async {
+  void _startDisconnecting(
+      OnDisconnectDevice event, Emitter<RemoState> emit) async {
     emit(Disconnecting());
     try {
       await for (ConnectionStates state in _bluetooth.startDisconnection()) {
@@ -113,8 +114,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     }
   }
 
-  void _startTransmission(OnStartTransmission _,
-      Emitter<RemoState> emit) async {
+  void _startTransmission(
+      OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
     dataController = StreamController<RemoData>();
     dataStream = dataController.stream.asBroadcastStream();
@@ -126,30 +127,34 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     bool waitingForData = false;
     int waitingForDataSize = 0;
 
+    // NOTE The protocol expects packets with an 8byte header composed of | 1 byte Identifier code (char) | - |  1byte Command code (char) | - | 2 byte counter  (char) | -  | 2 byte data length (char) | - | data |
+
     if (remoDataStream != null) {
       // Getting data from Remo.
       remoStreamSubscription = remoDataStream?.listen(
-            (dataBytes) {
-              final data = Uint8List.fromList(dataBytes);
+        (dataBytes) {
+
+          final data = Uint8List.fromList(dataBytes);
           print("Reading -> ${data.toString()}");
-          if (data.isNotEmpty && waitingForData == false){
+
+          if (data.isNotEmpty && waitingForData == false) {
 
             final declaredMessageSize = int.parse(String.fromCharCodes(data.sublist(6, 8)), radix: 16);
             final packetSize = dataBytes.length - headerLength;
 
-            print("Header message size -> $declaredMessageSize");
-            print("Message size -> $packetSize");
+            print("EMG data size -> $declaredMessageSize");
+            print("Packet data size -> $packetSize");
 
-            if(declaredMessageSize > packetSize){
+            if (declaredMessageSize > packetSize) {
               // store data into buffer
               buffer.addAll(dataBytes);
               // set waiting for data true
               waitingForData = true;
               // store data size
               waitingForDataSize = declaredMessageSize;
-            }else{
+            } else {
               // we can manage data
-              switch(data.first) {
+              switch (data.first) {
                 case RMS_IDENTIFIER_CODE:
                   _manageRMSData(data);
                   _sendAck(data);
@@ -162,28 +167,28 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                   _sendAck(data);
               }
             }
-          }else if(data.isNotEmpty && waitingForData){
+          } else if (data.isNotEmpty && waitingForData) {
             // store new data into buffer
             buffer.addAll(dataBytes);
 
             final bufferSize = buffer.length - headerLength;
+            final percentage = (bufferSize / waitingForDataSize) * 100;
 
-            print("Buffer size -> $bufferSize");
+            print("Buffer size -> $bufferSize, Loaded -> $percentage %");
 
-            if(waitingForDataSize == bufferSize){
-                  //manage buffered data
-                if(buffer.first == RMS_IDENTIFIER_CODE) {
-                  _manageRMSData(Uint8List.fromList(buffer));
-                  // todo manage any other data
-                }
-                _sendAck(Uint8List.fromList(buffer));
-                // reset buffer
-                buffer.clear();
-                waitingForData = false;
-                waitingForDataSize = 0;
+            if (waitingForDataSize == bufferSize) {
+              //manage buffered data
+              if (buffer.first == RMS_IDENTIFIER_CODE) {
+                _manageRMSData(Uint8List.fromList(buffer));
+                // todo manage any other data
+              }
+              _sendAck(Uint8List.fromList(buffer));
+              // reset buffer
+              buffer.clear();
+              waitingForData = false;
+              waitingForDataSize = 0;
             }
           }
-
         },
         onError: (error) {
           print("Subscribe error");
@@ -205,16 +210,19 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     }
   }
 
-  void _manageRMSData(Uint8List data){
-    ByteData byteArray = data.sublist(headerLength - 1).buffer.asByteData(); // take only data
+  void _manageRMSData(Uint8List data) {
+    ByteData byteArray =
+        data.sublist(headerLength - 1).buffer.asByteData(); // take only data
 
     // Converting the data coming from Remo.
     //// EMG.
-    for( int dataIndex = 0; dataIndex < byteArray.lengthInBytes; dataIndex+= channels * 2) {
+    for (int dataIndex = 0;
+        dataIndex < byteArray.lengthInBytes;
+        dataIndex += channels * 2) {
       List<double> emg = List.filled(channels, 0);
       for (int byteIndex = 0, emgIndex = 0;
-      emgIndex < channels;
-      byteIndex += 2, ++emgIndex) {
+          emgIndex < channels;
+          byteIndex += 2, ++emgIndex) {
         emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
       }
 
@@ -232,19 +240,18 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     }
   }
 
-
   List<int> _buildACKMessage(Uint8List message) {
     if (message.length >= headerLength) {
-      final ok = [48,50,79, 75]; // 02 + OK
-      var ack = message.take(
-          headerLength - 2); // take identifier, command and counter from message
+      final ok = [48, 50, 79, 75]; // 02 + OK
+      var ack = message.take(headerLength -
+          2); // take identifier, command and counter from message
       print("ack header -> ${String.fromCharCodes(ack)}");
       return List.from(ack)..addAll(ok); // return ack + ok
     }
     return message;
   }
 
-  void _sendAck(Uint8List dataBytes){
+  void _sendAck(Uint8List dataBytes) {
     final ack = _buildACKMessage(dataBytes);
     print("--- Sending ack to device ---");
     _bluetooth.sendMessage(Uint8List.fromList(ack));
@@ -256,8 +263,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     emit(TransmissionStopped());
   }
 
-  void _resetTransmission(OnResetTransmission _,
-      Emitter<RemoState> emit) async {
+  void _resetTransmission(
+      OnResetTransmission _, Emitter<RemoState> emit) async {
     if (await _bluetooth.isDeviceConnected()) {
       emit(Connected());
     } else {
@@ -287,9 +294,6 @@ class RemoData {
   });
 
   String toCsvString() {
-    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration
-        .x},${acceleration.y},${acceleration.z},${angularVelocity
-        .x},${angularVelocity.y},${angularVelocity.z},${magneticField
-        .x},${magneticField.y},${magneticField.z}\n";
+    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
   }
 }

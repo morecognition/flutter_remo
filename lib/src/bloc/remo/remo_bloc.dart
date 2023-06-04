@@ -169,8 +169,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                     }else{
                       emit(ConnectionError());
                     }
+                  }else {
+                    _sendAck(data);
                   }
-                  _sendAck(data);
                   break;
                 default:
                   print("Unmanaged packet: $data");

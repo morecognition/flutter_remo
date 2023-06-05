@@ -44,7 +44,7 @@ class WearRemoStep extends StatelessWidget {
                   );
                 },
                 style: TextButton.styleFrom(
-                    backgroundColor: Theme.of(context).accentColor),
+                    backgroundColor: Theme.of(context).colorScheme.secondary),
                 child: Text('NEXT'),
               ),
             ],
@@ -125,7 +125,7 @@ class TurnOnBluetoothStep extends StatelessWidget {
                   }
                 },
                 style: TextButton.styleFrom(
-                    backgroundColor: Theme.of(context).accentColor),
+                    backgroundColor: Theme.of(context).colorScheme.secondary),
                 child: Text('SCAN'),
               ),
             ],
@@ -215,7 +215,7 @@ class BluetoothStep extends StatelessWidget {
           } else if (bluetoothState is BluetoothInitial) {
             _widget = Center(
               child: MaterialButton(
-                color: Theme.of(context).accentColor,
+                color: Theme.of(context).colorScheme.secondary,
                 shape: CircleBorder(),
                 child: Padding(
                   padding: EdgeInsets.all(30),
@@ -265,7 +265,7 @@ class RemoConnectionStep extends StatelessWidget {
                     );
                   },
                   style: TextButton.styleFrom(
-                      backgroundColor: Theme.of(context).accentColor),
+                      backgroundColor: Theme.of(context).colorScheme.secondary),
                   child: Text('Connect')),
             );
           } else if (state is Connecting) {
@@ -278,7 +278,7 @@ class RemoConnectionStep extends StatelessWidget {
                     Navigator.of(context).popUntil((route) => count++ == 4);
                   },
                   style: TextButton.styleFrom(
-                      backgroundColor: Theme.of(context).accentColor),
+                      backgroundColor: Theme.of(context).colorScheme.secondary),
                   child: Text('Finish')),
             );
           } else if (state is ConnectionError) {

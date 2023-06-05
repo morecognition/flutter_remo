@@ -3,15 +3,13 @@ import 'dart:typed_data';
 
 import 'package:flutter_remo/src/bloc/bluetooth/impl/bluetooth_reactive_ble.dart';
 
-import 'impl/bluetooth_serial.dart';
-
 /// Template used by a class used to discover Bluetooth devices and connect to them. Made to decouple the application from the Bluetooth library used.
 abstract class Bluetooth {
   /// Starts discovering Bluetooth devices.
   Stream<DeviceInfos> startDiscovery();
 
   /// Starts the connection with a Bluetooth device, given the address.
-  Future<Stream<ConnectionStates>>  startConnection(String address);
+  Future<Stream<ConnectionStates>> startConnection(String address);
 
   /// Gets the stream containing data coming from the Bluetooth device.
   Stream<List<int>>? getInputStream();

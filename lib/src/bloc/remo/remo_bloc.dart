@@ -56,6 +56,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {
+      //in await _bluetooth.startConnection("34:81:F4:EA:45:8C")) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -234,7 +235,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       for (int byteIndex = 0, emgIndex = 0;
           emgIndex < channels;
           byteIndex += 2, ++emgIndex) {
-        emg[emgIndex] = byteArray.getInt16(byteIndex) / 1000;
+        emg[emgIndex] = byteArray.getInt16(byteIndex) * 4500000 / (65535 * 24);
       }
 
       print("EMG -> $emg");

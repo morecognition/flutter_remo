@@ -224,7 +224,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   void _manageRMSData(Uint8List data) {
     ByteData byteArray =
-        data.sublist(headerLength - 1).buffer.asByteData(); // take only data
+        data.sublist(headerLength).buffer.asByteData(); // take only data
 
     // Converting the data coming from Remo.
     //// EMG.
@@ -232,10 +232,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         dataIndex < byteArray.lengthInBytes;
         dataIndex += channels * 2) {
       List<double> emg = List.filled(channels, 0);
-      for (int byteIndex = 0, emgIndex = 0;
+      for (int byteIndex = dataIndex, emgIndex = 0;
           emgIndex < channels;
           byteIndex += 2, ++emgIndex) {
-        emg[emgIndex] = byteArray.getInt16(byteIndex) * 4500000 / (65535 * 24);
+        emg[emgIndex] = byteArray.getInt16(byteIndex)* 4500000 / (65535 * 24);
       }
 
       print("EMG -> $emg");

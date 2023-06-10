@@ -241,7 +241,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       for (int byteIndex = dataIndex, emgIndex = 0;
           emgIndex < channels;
           byteIndex += 2, ++emgIndex) {
-        emg[emgIndex] = byteArray.getInt16(byteIndex) * 4500000 / (65535 * 24);
+        emg[emgIndex] = byteArray.getInt16(byteIndex, Endian.little) * 4500000 / (65535 * 24);
       }
 
       print("EMG -> $emg");

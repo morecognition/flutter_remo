@@ -22,6 +22,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   // Remo's emg channels.
   static const int channels = 8;
+  bool isTransmissionStarted = false;
 
   // Stream subscription handler.
   StreamSubscription<List<int>>? remoStreamSubscription;
@@ -56,7 +57,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {
-      //in await _bluetooth.startConnection("34:81:F4:EA:45:8C")) {
+        //in await _bluetooth.startConnection("34:81:F4:EA:45:8C")) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -118,107 +119,112 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   void _startTransmission(
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
-    dataController = StreamController<RemoData>();
-    dataStream = dataController.stream.asBroadcastStream();
+    if(!isTransmissionStarted) {
+      dataController = StreamController<RemoData>();
+      dataStream = dataController.stream.asBroadcastStream();
 
-    // data buffer used to store data from multiple packets at a time
-    List<int> buffer = [];
+      // data buffer used to store data from multiple packets at a time
+      List<int> buffer = [];
 
-    //we want to check if we expect a new data package
-    bool waitingForData = false;
-    int waitingForDataSize = 0;
+      //we want to check if we expect a new data package
+      bool waitingForData = false;
+      int waitingForDataSize = 0;
 
-    // NOTE The protocol expects packets with an 8byte header composed of | 1 byte Identifier code (char) | - |  1byte Command code (char) | - | 2 byte counter  (char) | -  | 2 byte data length (char) | - | data |
+      // NOTE The protocol expects packets with an 8byte header composed of | 1 byte Identifier code (char) | - |  1byte Command code (char) | - | 2 byte counter  (char) | -  | 2 byte data length (char) | - | data |
 
-    if (remoDataStream != null) {
-      // Getting data from Remo.
-      remoStreamSubscription = remoDataStream?.listen(
-        (dataBytes) {
+      if (remoDataStream != null) {
+        // Getting data from Remo.
+        remoStreamSubscription = remoDataStream?.listen(
+              (dataBytes) {
+            final data = Uint8List.fromList(dataBytes);
+            print("Reading -> ${data.toString()}");
 
-          final data = Uint8List.fromList(dataBytes);
-          print("Reading -> ${data.toString()}");
+            if (data.isNotEmpty && waitingForData == false) {
+              final declaredMessageSize = int.parse(
+                  String.fromCharCodes(data.sublist(6, 8)), radix: 16);
+              final packetSize = dataBytes.length - headerLength;
 
-          if (data.isNotEmpty && waitingForData == false) {
+              print("EMG data size -> $declaredMessageSize");
+              print("Packet data size -> $packetSize");
 
-            final declaredMessageSize = int.parse(String.fromCharCodes(data.sublist(6, 8)), radix: 16);
-            final packetSize = dataBytes.length - headerLength;
-
-            print("EMG data size -> $declaredMessageSize");
-            print("Packet data size -> $packetSize");
-
-            if (declaredMessageSize > packetSize) {
-              // store data into buffer
-              buffer.addAll(dataBytes);
-              // set waiting for data true
-              waitingForData = true;
-              // store data size
-              waitingForDataSize = declaredMessageSize;
-            } else {
-              // we can manage data
-              switch (data.first) {
-                case RMS_IDENTIFIER_CODE:
-                  _manageRMSData(data);
-                  _sendAck(data);
-                  break;
-                case GLOBAL_IDENTIFIER_CODE:
-                  if(data.length >= headerLength + 1  && data[1] == acquisitionModeDataCode){
-                    final message = data.sublist(headerLength);
-                    final stringMessage = String.fromCharCodes(message);
-                    print("Data Acquisition response -> $stringMessage");
-                    if(stringMessage.contains("OK")){
-                      _sendAck(data);
-                    }else{
-                      emit(ConnectionError());
-                    }
-                  }else {
+              if (declaredMessageSize > packetSize) {
+                // store data into buffer
+                buffer.addAll(dataBytes);
+                // set waiting for data true
+                waitingForData = true;
+                // store data size
+                waitingForDataSize = declaredMessageSize;
+              } else {
+                // we can manage data
+                switch (data.first) {
+                  case RMS_IDENTIFIER_CODE:
+                    _manageRMSData(data);
                     _sendAck(data);
-                  }
-                  break;
-                default:
-                  print("Unmanaged packet: $data");
-                  _sendAck(data);
+                    break;
+                  case GLOBAL_IDENTIFIER_CODE:
+                    if (data.length >= headerLength + 1 &&
+                        data[1] == acquisitionModeDataCode) {
+                      final message = data.sublist(headerLength);
+                      final stringMessage = String.fromCharCodes(message);
+                      print("Data Acquisition response -> $stringMessage");
+                      if (stringMessage.contains("OK")) {
+                        _sendAck(data);
+                      } else {
+                        emit(ConnectionError());
+                      }
+                    } else {
+                      _sendAck(data);
+                    }
+                    break;
+                  default:
+                    print("Unmanaged packet: $data");
+                    _sendAck(data);
+                }
+              }
+            } else if (data.isNotEmpty && waitingForData) {
+              // store new data into buffer
+              buffer.addAll(dataBytes);
+
+              final bufferSize = buffer.length - headerLength;
+              final percentage = (bufferSize / waitingForDataSize) * 100;
+
+              print("Buffer size -> $bufferSize, Loaded -> $percentage %");
+
+              if (waitingForDataSize == bufferSize) {
+                //manage buffered data
+                if (buffer.first == RMS_IDENTIFIER_CODE) {
+                  _manageRMSData(Uint8List.fromList(buffer));
+                  // todo manage any other data
+                }
+                _sendAck(Uint8List.fromList(buffer));
+                // reset buffer
+                buffer.clear();
+                waitingForData = false;
+                waitingForDataSize = 0;
               }
             }
-          } else if (data.isNotEmpty && waitingForData) {
-            // store new data into buffer
-            buffer.addAll(dataBytes);
+          },
+          onError: (error) {
+            print("Subscribe error");
+          },
+          onDone: () {
+            dataController.close();
+          },
+        );
 
-            final bufferSize = buffer.length - headerLength;
-            final percentage = (bufferSize / waitingForDataSize) * 100;
+        // send acquisition mode message
+        print("--- Sending acquisition mode message ---");
+        final message = "?S000000".codeUnits;
+        _bluetooth.sendMessage(Uint8List.fromList(message));
 
-            print("Buffer size -> $bufferSize, Loaded -> $percentage %");
-
-            if (waitingForDataSize == bufferSize) {
-              //manage buffered data
-              if (buffer.first == RMS_IDENTIFIER_CODE) {
-                _manageRMSData(Uint8List.fromList(buffer));
-                // todo manage any other data
-              }
-              _sendAck(Uint8List.fromList(buffer));
-              // reset buffer
-              buffer.clear();
-              waitingForData = false;
-              waitingForDataSize = 0;
-            }
-          }
-        },
-        onError: (error) {
-          print("Subscribe error");
-        },
-        onDone: () {
-          dataController.close();
-        },
-      );
-
-      // send acquisition mode message
-      print("--- Sending acquisition mode message ---");
-      final message = "?S000000".codeUnits;
-      _bluetooth.sendMessage(Uint8List.fromList(message));
-
-      // emit transmission started
+        // emit transmission started
+        emit(TransmissionStarted(dataStream));
+        isTransmissionStarted = true;
+      } else {
+        emit(ConnectionError());
+      }
+    }else{
       emit(TransmissionStarted(dataStream));
-    } else {
-      emit(ConnectionError());
     }
   }
 
@@ -235,7 +241,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       for (int byteIndex = dataIndex, emgIndex = 0;
           emgIndex < channels;
           byteIndex += 2, ++emgIndex) {
-        emg[emgIndex] = byteArray.getInt16(byteIndex)* 4500000 / (65535 * 24);
+        emg[emgIndex] = byteArray.getInt16(byteIndex) * 4500000 / (65535 * 24);
       }
 
       print("EMG -> $emg");
@@ -255,7 +261,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   List<int> _buildACKMessage(Uint8List message) {
     if (message.length >= headerLength) {
       final ok = [48, 50, 79, 75]; // 02 + OK
-      var ack = message.take(headerLength - 2); // take identifier, command and counter from message
+      var ack = message.take(headerLength -
+          2); // take identifier, command and counter from message
       print("ack header -> ${String.fromCharCodes(ack)}");
       return List.from(ack)..addAll(ok); // return ack + ok
     }
@@ -271,6 +278,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   void _stopTransmission(OnStopTransmission _, Emitter<RemoState> emit) async {
     emit(StoppingTransmission());
     remoStreamSubscription?.cancel();
+    isTransmissionStarted = false;
     emit(TransmissionStopped());
   }
 
@@ -279,6 +287,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     if (await _bluetooth.isDeviceConnected()) {
       emit(Connected());
     } else {
+      isTransmissionStarted = false;
       emit(Disconnected());
     }
   }

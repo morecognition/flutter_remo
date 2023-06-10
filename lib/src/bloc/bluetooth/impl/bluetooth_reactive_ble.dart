@@ -147,16 +147,18 @@ class BluetoothReactiveBLE implements Bluetooth {
     _foundBleUARTDevices = [];
     _scanStream = flutterReactiveBle.scanForDevices(
         withServices: [_remoServiceUUID],
-        scanMode: ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_){ _scanStream.cancel(); }).listen((device) {
+        scanMode: ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_){ _scanStream.cancel(); infoStreamController.close();}).listen((device) {
       if (_foundBleUARTDevices.every((element) =>
       element.id != device.id) && device.manufacturerData.isNotEmpty) {
+        print("Trovato Remo con id: ${device.id}");
+        _foundBleUARTDevices.add(device);
         infoStreamController.add(
           DeviceInfos(
               device.id,
               _buildMACAddressFromManufacturerData(device.manufacturerData)
           ),
         );
-        print("Trovato Remo con id: ${device.id}");
+        infoStreamController.close();
       }
     }, onDone: () {
           infoStreamController.close();

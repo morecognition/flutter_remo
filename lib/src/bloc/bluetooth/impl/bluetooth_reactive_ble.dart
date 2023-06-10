@@ -15,6 +15,8 @@ class BluetoothReactiveBLE implements Bluetooth {
     return _singleton;
   }
 
+  List<DiscoveredDevice> _foundBleUARTDevices = [];
+  late StreamSubscription<DiscoveredDevice> _scanStream;
   late StreamSubscription<ConnectionStateUpdate> _connection;
   late Stream<ConnectionStateUpdate> _currentConnectionStream;
   late QualifiedCharacteristic _txCharacteristic;
@@ -142,10 +144,12 @@ class BluetoothReactiveBLE implements Bluetooth {
     StreamController<DeviceInfos> infoStreamController =
     StreamController<DeviceInfos>.broadcast();
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
-    flutterReactiveBle.scanForDevices(
+    _foundBleUARTDevices = [];
+    _scanStream = flutterReactiveBle.scanForDevices(
         withServices: [_remoServiceUUID],
-        scanMode: ScanMode.lowLatency).listen((device) {
-      if (device.manufacturerData.isNotEmpty) {
+        scanMode: ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_){ _scanStream.cancel(); }).listen((device) {
+      if (_foundBleUARTDevices.every((element) =>
+      element.id != device.id) && device.manufacturerData.isNotEmpty) {
         infoStreamController.add(
           DeviceInfos(
               device.id,
@@ -154,7 +158,9 @@ class BluetoothReactiveBLE implements Bluetooth {
         );
         print("Trovato Remo con id: ${device.id}");
       }
-    }, onDone: () => infoStreamController.close());
+    }, onDone: () {
+          infoStreamController.close();
+        });
     return namesStream;
   }
 

@@ -63,7 +63,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             emit(Disconnected());
             break;
           case ConnectionStates.connected:
-            remoDataStream = await _bluetooth.getInputStream()!;
+            remoDataStream = _bluetooth.getInputStream()!;
             _startTransmission(OnStartTransmission(), emit);
             emit(Connected());
             break;
@@ -119,7 +119,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   void _startTransmission(
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
-    if(!isTransmissionStarted) {
+    if (!isTransmissionStarted) {
       dataController = StreamController<RemoData>();
       dataStream = dataController.stream.asBroadcastStream();
 
@@ -135,13 +135,14 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       if (remoDataStream != null) {
         // Getting data from Remo.
         remoStreamSubscription = remoDataStream?.listen(
-              (dataBytes) {
+          (dataBytes) {
             final data = Uint8List.fromList(dataBytes);
             print("Reading -> ${data.toString()}");
 
             if (data.isNotEmpty && waitingForData == false) {
               final declaredMessageSize = int.parse(
-                  String.fromCharCodes(data.sublist(6, 8)), radix: 16);
+                  String.fromCharCodes(data.sublist(6, 8)),
+                  radix: 16);
               final packetSize = dataBytes.length - headerLength;
 
               print("EMG data size -> $declaredMessageSize");
@@ -223,7 +224,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       } else {
         emit(ConnectionError());
       }
-    }else{
+    } else {
       emit(TransmissionStarted(dataStream));
     }
   }
@@ -241,7 +242,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       for (int byteIndex = dataIndex, emgIndex = 0;
           emgIndex < channels;
           byteIndex += 2, ++emgIndex) {
-        emg[emgIndex] = byteArray.getInt16(byteIndex, Endian.little) * 4500000 / (65535 * 24);
+        emg[emgIndex] = byteArray.getInt16(byteIndex, Endian.little) *
+            4500000 /
+            (65535 * 24);
       }
 
       print("EMG -> $emg");

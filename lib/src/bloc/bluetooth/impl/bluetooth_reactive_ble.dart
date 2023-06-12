@@ -9,7 +9,7 @@ class BluetoothReactiveBLE implements Bluetooth {
   BluetoothReactiveBLE._internal();
 
   static final BluetoothReactiveBLE _singleton =
-  BluetoothReactiveBLE._internal();
+      BluetoothReactiveBLE._internal();
 
   factory BluetoothReactiveBLE() {
     return _singleton;
@@ -25,11 +25,11 @@ class BluetoothReactiveBLE implements Bluetooth {
 
   final flutterReactiveBle = FlutterReactiveBle();
   final Uuid _remoServiceUUID =
-  Uuid.parse("49535343-fe7d-4ae5-8fa9-9fafd205e455");
+      Uuid.parse("49535343-fe7d-4ae5-8fa9-9fafd205e455");
   final Uuid _remoCharacteristicTxUUID =
-  Uuid.parse("49535343-8841-43f4-a8d4-ecbe34729bb3");
+      Uuid.parse("49535343-8841-43f4-a8d4-ecbe34729bb3");
   final Uuid _remoCharacteristicRxUUID =
-  Uuid.parse("49535343-1e4d-4bd9-ba61-23c647249616");
+      Uuid.parse("49535343-1e4d-4bd9-ba61-23c647249616");
 
   @override
   Stream<List<int>>? getInputStream() {
@@ -62,7 +62,7 @@ class BluetoothReactiveBLE implements Bluetooth {
   Future<Stream<ConnectionStates>> startConnection(String address) async {
     // Init connection state stream.
     StreamController<ConnectionStates> connectionStatesController =
-    StreamController<ConnectionStates>();
+        StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
     try {
       // try to scan
@@ -79,47 +79,42 @@ class BluetoothReactiveBLE implements Bluetooth {
             return false;
           });
 
-      if (device != null) {
-        // connect to device
-        _currentConnectionStream =
-            flutterReactiveBle.connectToAdvertisingDevice(
-                id: device.id,
-                withServices: [_remoServiceUUID],
-                prescanDuration: const Duration(seconds: 5),
-                connectionTimeout: const Duration(seconds: 90));
+      // connect to device
+      _currentConnectionStream = flutterReactiveBle.connectToAdvertisingDevice(
+          id: device.id,
+          withServices: [_remoServiceUUID],
+          prescanDuration: const Duration(seconds: 5),
+          connectionTimeout: const Duration(seconds: 90));
 
-        _connection = _currentConnectionStream.listen((event) {
-          switch (event.connectionState) {
-            case DeviceConnectionState.connecting:
-              connectionStatesController.add(ConnectionStates.connecting);
-              break;
-            case DeviceConnectionState.connected:
-              _connected = true;
+      _connection = _currentConnectionStream.listen((event) {
+        switch (event.connectionState) {
+          case DeviceConnectionState.connecting:
+            connectionStatesController.add(ConnectionStates.connecting);
+            break;
+          case DeviceConnectionState.connected:
+            _connected = true;
 
-              _txCharacteristic = QualifiedCharacteristic(
-                  serviceId: _remoServiceUUID,
-                  characteristicId: _remoCharacteristicTxUUID,
-                  deviceId: event.deviceId);
-              _rxCharacteristic = QualifiedCharacteristic(
-                  serviceId: _remoServiceUUID,
-                  characteristicId: _remoCharacteristicRxUUID,
-                  deviceId: event.deviceId);
-              connectionStatesController.add(ConnectionStates.connected);
-              break;
-            case DeviceConnectionState.disconnecting:
-              connectionStatesController.add(ConnectionStates.disconnecting);
-              break;
-            case DeviceConnectionState.disconnected:
-              connectionStatesController.add(ConnectionStates.disconnected);
-              break;
-          }
-        }, onError: (error) {
-          connectionStatesController.add(ConnectionStates.error);
-          connectionStatesController.close();
-        });
-      } else {
-        connectionStatesController.add(ConnectionStates.disconnected);
-      }
+            _txCharacteristic = QualifiedCharacteristic(
+                serviceId: _remoServiceUUID,
+                characteristicId: _remoCharacteristicTxUUID,
+                deviceId: event.deviceId);
+            _rxCharacteristic = QualifiedCharacteristic(
+                serviceId: _remoServiceUUID,
+                characteristicId: _remoCharacteristicRxUUID,
+                deviceId: event.deviceId);
+            connectionStatesController.add(ConnectionStates.connected);
+            break;
+          case DeviceConnectionState.disconnecting:
+            connectionStatesController.add(ConnectionStates.disconnecting);
+            break;
+          case DeviceConnectionState.disconnected:
+            connectionStatesController.add(ConnectionStates.disconnected);
+            break;
+        }
+      }, onError: (error) {
+        connectionStatesController.add(ConnectionStates.error);
+        connectionStatesController.close();
+      });
     } catch (_) {
       connectionStatesController.add(ConnectionStates.disconnected);
     }
@@ -130,7 +125,7 @@ class BluetoothReactiveBLE implements Bluetooth {
   @override
   Stream<ConnectionStates> startDisconnection() {
     StreamController<ConnectionStates> connectionStatesController =
-    StreamController<ConnectionStates>();
+        StreamController<ConnectionStates>();
     Stream<ConnectionStates> statesStream = connectionStatesController.stream;
     _connection.cancel().then((_) {
       _connected = false;
@@ -142,27 +137,29 @@ class BluetoothReactiveBLE implements Bluetooth {
   @override
   Stream<DeviceInfos> startDiscovery() {
     StreamController<DeviceInfos> infoStreamController =
-    StreamController<DeviceInfos>.broadcast();
+        StreamController<DeviceInfos>.broadcast();
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
     _foundBleUARTDevices = [];
     _scanStream = flutterReactiveBle.scanForDevices(
         withServices: [_remoServiceUUID],
-        scanMode: ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_){ _scanStream.cancel(); infoStreamController.close();}).listen((device) {
-      if (_foundBleUARTDevices.every((element) =>
-      element.id != device.id) && device.manufacturerData.isNotEmpty) {
+        scanMode:
+            ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_) {
+      _scanStream.cancel();
+      infoStreamController.close();
+    }).listen((device) {
+      if (_foundBleUARTDevices.every((element) => element.id != device.id) &&
+          device.manufacturerData.isNotEmpty) {
         print("Trovato Remo con id: ${device.id}");
         _foundBleUARTDevices.add(device);
         infoStreamController.add(
-          DeviceInfos(
-              device.id,
-              _buildMACAddressFromManufacturerData(device.manufacturerData)
-          ),
+          DeviceInfos(device.id,
+              _buildMACAddressFromManufacturerData(device.manufacturerData)),
         );
         infoStreamController.close();
       }
     }, onDone: () {
-          infoStreamController.close();
-        });
+      infoStreamController.close();
+    });
     return namesStream;
   }
 
@@ -171,7 +168,8 @@ class BluetoothReactiveBLE implements Bluetooth {
   }
 
   String _buildMACAddressFromManufacturerData(Uint8List manufacturerData) {
-    return manufacturerData.map((e) => e.toRadixString(16))
+    return manufacturerData
+        .map((e) => e.toRadixString(16))
         .toList()
         .mapIndexed((index, element) {
       if (index < manufacturerData.length - 1) {

@@ -93,7 +93,7 @@ class BluetoothReactiveBLE implements Bluetooth {
             break;
           case DeviceConnectionState.connected:
             _connected = true;
-
+            flutterReactiveBle.requestMtu(deviceId: device.id, mtu: 150);
             _txCharacteristic = QualifiedCharacteristic(
                 serviceId: _remoServiceUUID,
                 characteristicId: _remoCharacteristicTxUUID,

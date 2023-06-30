@@ -23,16 +23,16 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
       StartRecording event, Emitter<RemoFileState> emit) async {
     tmpDirectory = await getTemporaryDirectory();
     Directory? directory;
-    if(Platform.isAndroid) {
+    if (Platform.isAndroid) {
       directory = await getExternalStorageDirectory();
-    } else if(Platform.isIOS) {
+    } else if (Platform.isIOS) {
       directory = await getApplicationDocumentsDirectory();
     }
     if (directory != null) {
       externalStorageDirectory = directory;
-      var uuid = Uuid();
+      var uuid = const Uuid();
       var tmpFileName = uuid.v4();
-      tmpFilePath = tmpDirectory.path + '/$tmpFileName.csv';
+      tmpFilePath = '${tmpDirectory.path}/$tmpFileName.csv';
     }
     remoDataStream = event.remoDataStream;
 
@@ -59,7 +59,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
 
   void _saveRecord(SaveRecord event, Emitter<RemoFileState> emit) async {
     final String newFilePath =
-        externalStorageDirectory.path + '/${event.fileName}.csv';
+        '${externalStorageDirectory.path}/${event.fileName}.csv';
     File tmpFile = File(tmpFilePath);
     File newFile = await tmpFile.copy(newFilePath);
     emit(RecordSaved(newFile));

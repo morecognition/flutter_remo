@@ -137,7 +137,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         remoStreamSubscription = remoDataStream?.listen(
           (dataBytes) {
             final data = Uint8List.fromList(dataBytes);
-            print("Reading -> ${data.toString()}");
+            //print("Reading -> ${data.toString()}");
 
             if (data.isNotEmpty && waitingForData == false) {
               final declaredMessageSize = int.parse(
@@ -145,8 +145,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                   radix: 16);
               final packetSize = dataBytes.length - headerLength;
 
-              print("EMG data size -> $declaredMessageSize");
-              print("Packet data size -> $packetSize");
+              //print("EMG data size -> $declaredMessageSize");
+              //print("Packet data size -> $packetSize");
 
               if (declaredMessageSize > packetSize) {
                 // store data into buffer
@@ -167,7 +167,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                         data[1] == acquisitionModeDataCode) {
                       final message = data.sublist(headerLength);
                       final stringMessage = String.fromCharCodes(message);
-                      print("Data Acquisition response -> $stringMessage");
+                      //print("Data Acquisition response -> $stringMessage");
                       if (stringMessage.contains("OK")) {
                         _sendAck(data);
                       } else {
@@ -178,7 +178,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                     }
                     break;
                   default:
-                    print("Unmanaged packet: $data");
+                    //print("Unmanaged packet: $data");
                     _sendAck(data);
                 }
               }
@@ -187,9 +187,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
               buffer.addAll(dataBytes);
 
               final bufferSize = buffer.length - headerLength;
-              final percentage = (bufferSize / waitingForDataSize) * 100;
+              //final percentage = (bufferSize / waitingForDataSize) * 100;
 
-              print("Buffer size -> $bufferSize, Loaded -> $percentage %");
+              //print("Buffer size -> $bufferSize, Loaded -> $percentage %");
 
               if (waitingForDataSize == bufferSize) {
                 //manage buffered data
@@ -206,7 +206,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             }
           },
           onError: (error) {
-            print("Subscribe error");
+            //print("Subscribe error");
           },
           onDone: () {
             dataController.close();
@@ -214,7 +214,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         );
 
         // send acquisition mode message
-        print("--- Sending acquisition mode message ---");
+        //print("--- Sending acquisition mode message ---");
         final message = "?S000000".codeUnits;
         _bluetooth.sendMessage(Uint8List.fromList(message));
 
@@ -247,7 +247,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             (65535 * 24);
       }
 
-      print("EMG -> $emg");
+      //print("EMG -> $emg");
 
       // sends EMG data to app
       dataController.add(
@@ -266,7 +266,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       final ok = [48, 50, 79, 75]; // 02 + OK
       var ack = message.take(headerLength -
           2); // take identifier, command and counter from message
-      print("ack header -> ${String.fromCharCodes(ack)}");
+      //print("ack header -> ${String.fromCharCodes(ack)}");
       return List.from(ack)..addAll(ok); // return ack + ok
     }
     return message;
@@ -274,7 +274,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   void _sendAck(Uint8List dataBytes) {
     final ack = _buildACKMessage(dataBytes);
-    print("--- Sending ack to device ---");
+    //print("--- Sending ack to device ---");
     _bluetooth.sendMessage(Uint8List.fromList(ack));
   }
 

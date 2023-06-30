@@ -51,8 +51,8 @@ class BluetoothReactiveBLE implements Bluetooth {
 
   @override
   bool sendMessage(Uint8List message) {
-    print(
-        "send data to device ->  $message - ${String.fromCharCodes(message)}");
+    //print(
+    //    "send data to device ->  $message - ${String.fromCharCodes(message)}");
     flutterReactiveBle.writeCharacteristicWithoutResponse(_txCharacteristic,
         value: message);
     return true;
@@ -69,7 +69,7 @@ class BluetoothReactiveBLE implements Bluetooth {
       final device = await flutterReactiveBle
           .scanForDevices(
               withServices: [_remoServiceUUID], scanMode: ScanMode.lowLatency)
-          .timeout(Duration(seconds: 5))
+          .timeout(const Duration(seconds: 5))
           .firstWhere((dev) {
             if (dev.manufacturerData.isNotEmpty) {
               final macAddress =
@@ -140,16 +140,16 @@ class BluetoothReactiveBLE implements Bluetooth {
         StreamController<DeviceInfos>.broadcast();
     Stream<DeviceInfos> namesStream = infoStreamController.stream;
     _foundBleUARTDevices = [];
-    _scanStream = flutterReactiveBle.scanForDevices(
-        withServices: [_remoServiceUUID],
-        scanMode:
-            ScanMode.lowLatency).timeout(Duration(seconds: 5), onTimeout: (_) {
+    _scanStream = flutterReactiveBle.scanForDevices(withServices: [
+      _remoServiceUUID
+    ], scanMode: ScanMode.lowLatency).timeout(const Duration(seconds: 5),
+        onTimeout: (_) {
       _scanStream.cancel();
       infoStreamController.close();
     }).listen((device) {
       if (_foundBleUARTDevices.every((element) => element.id != device.id) &&
           device.manufacturerData.isNotEmpty) {
-        print("Trovato Remo con id: ${device.id}");
+        //print("Trovato Remo con id: ${device.id}");
         _foundBleUARTDevices.add(device);
         infoStreamController.add(
           DeviceInfos(device.id,

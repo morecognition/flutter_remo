@@ -24,7 +24,12 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     tmpDirectory = await getTemporaryDirectory();
     Directory? directory;
     if (Platform.isAndroid) {
-      directory = Directory('$androidDocumentsPath/$remorderFolderName');
+      if(await Directory(androidDownloadPath).exists()) {
+        directory = Directory('$androidDownloadPath/$remorderFolderName');
+      } else {
+        directory = Directory('$androidAlternativeDownloadPath/$remorderFolderName');
+      }
+        
       if(!await directory.exists()) {
         await directory.create();
       }
@@ -81,6 +86,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   late Directory tmpDirectory;
   late Directory externalStorageDirectory;
 
-  static const String androidDocumentsPath = '/storage/emulated/0/Documents/';
+  static const String androidDownloadPath = '/storage/emulated/0/Downloads/';
+  static const String androidAlternativeDownloadPath = '/storage/emulated/0/Download/';
   static const String remorderFolderName = 'remorder';
 }

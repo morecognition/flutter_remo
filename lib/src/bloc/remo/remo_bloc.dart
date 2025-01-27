@@ -50,10 +50,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// Connects to a specific devices. The name is given by the select device event.
   void _startConnecting(OnConnectDevice event, Emitter<RemoState> emit) async {
     emit(Connecting());
+    /* Should be requested before the scan
     await Permission.bluetoothConnect.request();
     await Permission.bluetoothScan.request();
     await Permission.bluetooth.request();
     await Permission.locationWhenInUse.request();
+    */
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {

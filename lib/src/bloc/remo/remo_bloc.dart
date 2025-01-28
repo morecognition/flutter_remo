@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/src/bloc/bluetooth/bluetooth.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:vector_math/vector_math.dart';
 
 part 'remo_event.dart';
@@ -27,9 +27,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   // Stream subscription handler.
   StreamSubscription<List<int>>? remoStreamSubscription;
 
-  // The controller for the stream to pass to the UI.
-  late StreamController<RemoData> dataController;
-
   // The stream to pass to the UI.
   late Stream<RemoData> dataStream;
 
@@ -39,12 +36,20 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// The stream of data coming directly from the Remo device.
   Stream<List<int>>? remoDataStream;
 
+  final StreamController<RmsData> _rmsStreamController = StreamController<RmsData>();
+  final StreamController<ImuData> _imuStreamController = StreamController<ImuData>();
+
   RemoBloc() : super(Disconnected()) {
     on<OnConnectDevice>(_startConnecting);
     on<OnDisconnectDevice>(_startDisconnecting);
     on<OnStartTransmission>(_startTransmission);
     on<OnStopTransmission>(_stopTransmission);
     on<OnResetTransmission>(_resetTransmission);
+
+    dataStream = ZipStream.zip2(_rmsStreamController.stream, _imuStreamController.stream,
+        (rms, imu) => RemoData(emg: rms.emg, acceleration: imu.acceleration,
+            angularVelocity: imu.angularVelocity, magneticField: imu.magneticField))
+      .asBroadcastStream();
   }
 
   /// Connects to a specific devices. The name is given by the select device event.
@@ -95,8 +100,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         switch (state) {
           case ConnectionStates.disconnected:
             remoStreamSubscription?.cancel();
-            dataController.close();
-            remoDataStream = null;
+
             emit(Disconnected());
             break;
           case ConnectionStates.connected:
@@ -122,9 +126,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
     if (!isTransmissionStarted) {
-      dataController = StreamController<RemoData>();
-      dataStream = dataController.stream.asBroadcastStream();
-
       // data buffer used to store data from multiple packets at a time
       List<int> buffer = [];
 
@@ -162,6 +163,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                 switch (data.first) {
                   case RMS_IDENTIFIER_CODE:
                     _manageRMSData(data);
+                    _sendAck(data);
+                    break;
+                  case IMU_IDENTIFIER_CODE:
+                    _manageIMUData(data);
                     _sendAck(data);
                     break;
                   case GLOBAL_IDENTIFIER_CODE:
@@ -211,7 +216,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             //print("Subscribe error");
           },
           onDone: () {
-            dataController.close();
           },
         );
 
@@ -252,12 +256,39 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       //print("EMG -> $emg");
 
       // sends EMG data to app
-      dataController.add(
-        RemoData(
-          emg: emg,
-          acceleration: Vector3(0.0, 0.0, 0.0),
-          angularVelocity: Vector3(0.0, 0.0, 0.0),
-          magneticField: Vector3(0.0, 0.0, 0.0),
+      _rmsStreamController.add(
+        RmsData(emg: emg)
+      );
+    }
+  }
+
+  void _manageIMUData(Uint8List data) {
+    ByteData byteArray =
+    data.sublist(headerLength).buffer.asByteData(); // take only data
+
+    const fieldCount = 3;
+    const fieldLength = 2;
+    const imuLength = fieldCount * fieldLength;
+
+    // Converting the data coming from Remo.
+    //// IMU.
+    for (var dataIndex = 0; dataIndex < byteArray.lengthInBytes; dataIndex += imuLength) {
+      var fields = List.filled(3, Vector3.zero());
+
+      for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++){
+        var x = byteArray.getInt16(dataIndex + fieldLength * 0, Endian.little).toDouble();
+        var y = byteArray.getInt16(dataIndex + fieldLength * 1, Endian.little).toDouble();
+        var z = byteArray.getInt16(dataIndex + fieldLength * 2, Endian.little).toDouble();
+
+        fields[fieldIndex] = Vector3(x, y, z);
+      }
+
+      // sends IMU data to app
+      _imuStreamController.add(
+        ImuData(
+          acceleration: fields[0],
+          angularVelocity: fields[1],
+          magneticField: fields[2],
         ),
       );
     }
@@ -321,4 +352,24 @@ class RemoData {
   String toCsvString() {
     return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
   }
+}
+
+class ImuData {
+  final Vector3 acceleration;
+  final Vector3 angularVelocity;
+  final Vector3 magneticField;
+
+  ImuData({
+    required this.acceleration,
+    required this.angularVelocity,
+    required this.magneticField,
+  });
+}
+
+class RmsData {
+  final List<double> emg;
+
+  RmsData({
+    required this.emg,
+  });
 }

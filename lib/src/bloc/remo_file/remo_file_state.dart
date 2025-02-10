@@ -18,6 +18,8 @@ class RecordingComplete extends RemoFileState {
 
 class RecordDiscarded extends RemoFileState {}
 
+class SavingRecord extends RemoFileState {}
+
 class RecordSaved extends RemoFileState {
   RecordSaved(this.file);
   final File file;

@@ -66,6 +66,8 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   }
 
   void _saveRecord(SaveRecord event, Emitter<RemoFileState> emit) async {
+    emit(SavingRecord());
+
     final String newFilePath =
         '${externalStorageDirectory.path}/${event.fileName}.csv';
     File tmpFile = File(tmpFilePath);

@@ -26,6 +26,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   // Stream subscription handler.
   StreamSubscription<List<int>>? remoStreamSubscription;
+  String currentDeviceName = "";
 
   // The stream to pass to the UI.
   late Stream<RemoData> dataStream;
@@ -61,6 +62,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     await Permission.bluetooth.request();
     await Permission.locationWhenInUse.request();
     */
+    currentDeviceName = event.name;
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {

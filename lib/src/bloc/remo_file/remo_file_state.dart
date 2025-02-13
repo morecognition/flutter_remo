@@ -24,3 +24,9 @@ class RecordSaved extends RemoFileState {
   RecordSaved(this.file);
   final File file;
 }
+
+class RecordOpened extends RemoFileState {
+  RecordOpened(this.remoData, this.filePath);
+  final List<RemoData> remoData;
+  final String filePath;
+}

@@ -16,6 +16,11 @@ class SaveRecord extends RemoFileEvent {
   final String fileName;
 }
 
+class OpenRecord extends RemoFileEvent {
+  OpenRecord(this.filePath);
+  final String filePath;
+}
+
 class DiscardRecord extends RemoFileEvent {}
 
 class Reset extends RemoFileEvent {}

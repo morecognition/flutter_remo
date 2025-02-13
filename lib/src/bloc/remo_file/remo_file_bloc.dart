@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
+import 'package:csv/csv.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:vector_math/vector_math.dart' show Vector3;
 
 part 'remo_file_event.dart';
 part 'remo_file_state.dart';
@@ -16,6 +18,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     on<StopRecording>(_stopRecording);
     on<DiscardRecord>(_discardRecord);
     on<SaveRecord>(_saveRecord);
+    on<OpenRecord>(_openRecord);
     on<Reset>(_reset);
   }
 
@@ -76,9 +79,28 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     emit(RemoFileReady());
   }
 
+  void _openRecord(OpenRecord event, Emitter<RemoFileState> emit) async {
+    var file = File(event.filePath);
+
+    var data = const CsvToListConverter()
+        .convert(await file.readAsString(), eol: '\n')
+        .map((list) => list.cast<double>());
+
+    var remoData = data.map<RemoData>(_csvLineToRemoData).toList();
+    emit(RecordOpened(remoData, event.filePath));
+  }
+
   void _reset(Reset event, Emitter<RemoFileState> emit) async {
     remoStreamSubscription.cancel();
     emit(RemoFileInitial());
+  }
+
+  RemoData _csvLineToRemoData(List<double> line) {
+    return RemoData(
+        emg: line.take(8).toList(),
+        acceleration: Vector3(line[8], line[9], line[10]),
+        angularVelocity: Vector3(line[11], line[12], line[13]),
+        magneticField: Vector3(line[14], line[15], line[16]));
   }
 
   late Stream<RemoData> remoDataStream;

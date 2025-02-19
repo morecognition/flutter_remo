@@ -269,8 +269,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     data.sublist(headerLength).buffer.asByteData(); // take only data
 
     const fieldCount = 3;
-    const fieldLength = 2;
-    const imuLength = fieldCount * fieldLength;
+    const fieldElementCount = 3;
+    const fieldElementSize = 2;
+    const fieldSize = fieldElementCount * fieldElementSize;
+    const imuLength = fieldCount * fieldSize;
 
     // Converting the data coming from Remo.
     //// IMU.
@@ -278,9 +280,9 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       var fields = List.filled(3, Vector3.zero());
 
       for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++){
-        var x = byteArray.getInt16(dataIndex + fieldLength * 0, Endian.little).toDouble();
-        var y = byteArray.getInt16(dataIndex + fieldLength * 1, Endian.little).toDouble();
-        var z = byteArray.getInt16(dataIndex + fieldLength * 2, Endian.little).toDouble();
+        var x = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0, Endian.little).toDouble();
+        var y = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1, Endian.little).toDouble();
+        var z = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2, Endian.little).toDouble();
 
         fields[fieldIndex] = Vector3(x, y, z);
       }

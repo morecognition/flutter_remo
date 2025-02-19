@@ -37,8 +37,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// The stream of data coming directly from the Remo device.
   Stream<List<int>>? remoDataStream;
 
-  final StreamController<RmsData> _rmsStreamController = StreamController<RmsData>();
-  final StreamController<ImuData> _imuStreamController = StreamController<ImuData>();
+  final StreamController<RmsData> _rmsStreamController =
+      StreamController<RmsData>();
+  ImuData _latestImu = ImuData(
+      acceleration: Vector3.zero(),
+      angularVelocity: Vector3.zero(),
+      magneticField: Vector3.zero());
 
   RemoBloc() : super(Disconnected()) {
     on<OnConnectDevice>(_startConnecting);
@@ -47,10 +51,13 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     on<OnStopTransmission>(_stopTransmission);
     on<OnResetTransmission>(_resetTransmission);
 
-    dataStream = ZipStream.zip2(_rmsStreamController.stream, _imuStreamController.stream,
-        (rms, imu) => RemoData(emg: rms.emg, acceleration: imu.acceleration,
-            angularVelocity: imu.angularVelocity, magneticField: imu.magneticField))
-      .asBroadcastStream();
+    dataStream = _rmsStreamController.stream
+        .map((rmsData) => RemoData(
+            emg: rmsData.emg,
+            acceleration: _latestImu.acceleration,
+            angularVelocity: _latestImu.angularVelocity,
+            magneticField: _latestImu.magneticField))
+        .asBroadcastStream();
   }
 
   /// Connects to a specific devices. The name is given by the select device event.
@@ -217,8 +224,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
           onError: (error) {
             //print("Subscribe error");
           },
-          onDone: () {
-          },
+          onDone: () {},
         );
 
         // send acquisition mode message
@@ -258,15 +264,13 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       //print("EMG -> $emg");
 
       // sends EMG data to app
-      _rmsStreamController.add(
-        RmsData(emg: emg)
-      );
+      _rmsStreamController.add(RmsData(emg: emg));
     }
   }
 
   void _manageIMUData(Uint8List data) {
     ByteData byteArray =
-    data.sublist(headerLength).buffer.asByteData(); // take only data
+        data.sublist(headerLength).buffer.asByteData(); // take only data
 
     const fieldCount = 3;
     const fieldElementCount = 3;
@@ -276,24 +280,33 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
     // Converting the data coming from Remo.
     //// IMU.
-    for (var dataIndex = 0; dataIndex < byteArray.lengthInBytes; dataIndex += imuLength) {
+    for (var dataIndex = 0;
+        dataIndex < byteArray.lengthInBytes;
+        dataIndex += imuLength) {
       var fields = List.filled(3, Vector3.zero());
 
-      for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++){
-        var x = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0, Endian.little).toDouble();
-        var y = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1, Endian.little).toDouble();
-        var z = byteArray.getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2, Endian.little).toDouble();
+      for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
+        var x = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0,
+                Endian.little)
+            .toDouble();
+        var y = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1,
+                Endian.little)
+            .toDouble();
+        var z = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2,
+                Endian.little)
+            .toDouble();
 
         fields[fieldIndex] = Vector3(x, y, z);
       }
 
       // sends IMU data to app
-      _imuStreamController.add(
-        ImuData(
-          acceleration: fields[0],
-          angularVelocity: fields[1],
-          magneticField: fields[2],
-        ),
+      _latestImu = ImuData(
+        acceleration: fields[0],
+        angularVelocity: fields[1],
+        magneticField: fields[2],
       );
     }
   }

@@ -20,8 +20,9 @@ class Disconnecting extends RemoState {}
 class StartingTransmission extends RemoState {}
 
 class TransmissionStarted extends RemoState {
-  TransmissionStarted(this.remoDataStream);
-  final Stream<RemoData> remoDataStream;
+  TransmissionStarted(this.rmsDataStream, this.imuDataStream);
+  final Stream<RmsData> rmsDataStream;
+  final Stream<ImuData> imuDataStream;
 }
 
 class StoppingTransmission extends RemoState {}

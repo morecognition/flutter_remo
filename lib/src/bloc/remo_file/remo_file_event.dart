@@ -4,9 +4,10 @@ part of 'remo_file_bloc.dart';
 abstract class RemoFileEvent {}
 
 class StartRecording extends RemoFileEvent {
-  final Stream<RemoData> remoDataStream;
+  final Stream<RmsData> rmsDataStream;
+  final Stream<ImuData> imuDataStream;
 
-  StartRecording(this.remoDataStream);
+  StartRecording(this.rmsDataStream, this.imuDataStream);
 }
 
 class StopRecording extends RemoFileEvent {}
@@ -16,8 +17,8 @@ class SaveRecord extends RemoFileEvent {
   final String fileName;
 }
 
-class OpenRecord extends RemoFileEvent {
-  OpenRecord(this.filePath);
+class OpenRmsRecord extends RemoFileEvent {
+  OpenRmsRecord(this.filePath);
   final String filePath;
 }
 

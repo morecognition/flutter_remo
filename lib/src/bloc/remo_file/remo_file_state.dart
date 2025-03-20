@@ -12,8 +12,9 @@ class RemoFileReady extends RemoFileState {}
 class Recording extends RemoFileState {}
 
 class RecordingComplete extends RemoFileState {
-  RecordingComplete(this.file);
-  final File file;
+  RecordingComplete(this.rmsFile, this.imuFile);
+  final File rmsFile;
+  final File imuFile;
 }
 
 class RecordDiscarded extends RemoFileState {}
@@ -21,12 +22,13 @@ class RecordDiscarded extends RemoFileState {}
 class SavingRecord extends RemoFileState {}
 
 class RecordSaved extends RemoFileState {
-  RecordSaved(this.file);
-  final File file;
+  RecordSaved(this.rmsFile, this.imuFile);
+  final File rmsFile;
+  final File imuFile;
 }
 
-class RecordOpened extends RemoFileState {
-  RecordOpened(this.remoData, this.filePath);
-  final List<RemoData> remoData;
+class RmsRecordOpened extends RemoFileState {
+  RmsRecordOpened(this.rmsData, this.filePath);
+  final List<RmsData> rmsData;
   final String filePath;
 }

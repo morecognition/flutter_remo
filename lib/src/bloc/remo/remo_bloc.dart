@@ -21,11 +21,11 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
 
   static const double G = 9.8;
   static const double sensorPrecision = 32768.0;
-  static const double accelerometerFullScale = 2000.0;
-  static const double gyroscopeFullScale = 4 * G;
+  static const double accelerometerFullScale = 2 * G;
+  static const double gyroscopeFullScale = 2000.0;
 
-  static const double accelerationNormalizationFactor = accelerometerFullScale / sensorPrecision; // 8byte
-  static const double angularVelocityNormalizationFactor = gyroscopeFullScale / sensorPrecision; // 8byte
+  static const double accelerationNormalizationFactor = accelerometerFullScale / sensorPrecision;
+  static const double angularVelocityNormalizationFactor = gyroscopeFullScale / sensorPrecision;
 
   // Remo's emg channels.
   static const int channels = 8;

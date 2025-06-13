@@ -24,6 +24,10 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
     } on Exception {
       emit(DiscoveryError());
     }
+    if (_deviceNames.isEmpty)
+      {
+        emit(DiscoveryError());
+      }
   }
 
   /// Simply returns the list of discovered devices.

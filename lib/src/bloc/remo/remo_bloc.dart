@@ -24,8 +24,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const double accelerometerFullScale = 2 * G;
   static const double gyroscopeFullScale = 2000.0;
 
-  static const double accelerationNormalizationFactor = accelerometerFullScale / sensorPrecision;
-  static const double angularVelocityNormalizationFactor = gyroscopeFullScale / sensorPrecision;
+  static const double accelerationNormalizationFactor =
+      accelerometerFullScale / sensorPrecision;
+  static const double angularVelocityNormalizationFactor =
+      gyroscopeFullScale / sensorPrecision;
 
   // Remo's emg channels.
   static const int channels = 8;
@@ -46,8 +48,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// The stream of data coming directly from the Remo device.
   Stream<List<int>>? remoDataStream;
 
-  final StreamController<RmsData> _rmsStreamController = StreamController<RmsData>();
-  final StreamController<ImuData> _imuStreamController = StreamController<ImuData>();
+  final StreamController<RmsData> _rmsStreamController =
+      StreamController<RmsData>();
+  final StreamController<ImuData> _imuStreamController =
+      StreamController<ImuData>();
 
   RemoBloc() : super(Disconnected()) {
     on<OnConnectDevice>(_startConnecting);
@@ -73,7 +77,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {
-        //in await _bluetooth.startConnection("34:81:F4:EA:45:8C")) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -265,7 +268,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       //print("EMG -> $emg");
 
       // sends EMG data to app
-      _rmsStreamController.add(RmsData(emg: emg, timestamp: DateTime.timestamp().difference(transmissionStartingTime).inMilliseconds.toDouble()));
+      _rmsStreamController.add(RmsData(
+          emg: emg,
+          timestamp: DateTime.timestamp()
+              .difference(transmissionStartingTime)
+              .inMilliseconds
+              .toDouble()));
     }
   }
 
@@ -279,7 +287,11 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     const fieldSize = fieldElementCount * fieldElementSize;
     const imuLength = fieldCount * fieldSize;
 
-    const normalizationFactors = [accelerationNormalizationFactor, angularVelocityNormalizationFactor, 1.0];
+    const normalizationFactors = [
+      accelerationNormalizationFactor,
+      angularVelocityNormalizationFactor,
+      1.0
+    ];
 
     // Converting the data coming from Remo.
     //// IMU.
@@ -304,16 +316,19 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                 Endian.little)
             .toDouble();
 
-        fields[fieldIndex] = Vector3(x, y, z) * normalizationFactors[fieldIndex];
+        fields[fieldIndex] =
+            Vector3(x, y, z) * normalizationFactors[fieldIndex];
       }
 
       // sends IMU data to app
       _imuStreamController.add(ImuData(
-        acceleration: fields[0],
-        angularVelocity: fields[1],
-        magneticField: fields[2],
-          timestamp: DateTime.timestamp().difference(transmissionStartingTime).inMilliseconds.toDouble()
-      ));
+          acceleration: fields[0],
+          angularVelocity: fields[1],
+          magneticField: fields[2],
+          timestamp: DateTime.timestamp()
+              .difference(transmissionStartingTime)
+              .inMilliseconds
+              .toDouble()));
     }
   }
 

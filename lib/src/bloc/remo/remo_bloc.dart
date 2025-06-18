@@ -20,14 +20,12 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const int headerLength = 8; // 8byte
 
   static const double G = 9.8;
-  static const double sensorPrecision = 32768.0;
+  static const double sensorPrecision = 65535;
   static const double accelerometerFullScale = 2 * G;
   static const double gyroscopeFullScale = 2000.0;
 
-  static const double accelerationNormalizationFactor =
-      accelerometerFullScale / sensorPrecision;
-  static const double angularVelocityNormalizationFactor =
-      gyroscopeFullScale / sensorPrecision;
+  static const double accelerationNormalizationFactor = 9.8 / 1000;//accelerometerFullScale / sensorPrecision;
+  static const double angularVelocityNormalizationFactor = 1 / 1000;//gyroscopeFullScale / sensorPrecision;
 
   // Remo's emg channels.
   static const int channels = 8;
@@ -40,7 +38,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   // The stream to pass to the UI.
   late Stream<ImuData> imuStream;
   late Stream<RmsData> rmsStream;
-  late DateTime transmissionStartingTime;
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();
@@ -138,7 +135,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
     if (!isTransmissionStarted) {
-      transmissionStartingTime = DateTime.timestamp();
       // data buffer used to store data from multiple packets at a time
       List<int> buffer = [];
 
@@ -268,12 +264,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       //print("EMG -> $emg");
 
       // sends EMG data to app
-      _rmsStreamController.add(RmsData(
-          emg: emg,
-          timestamp: DateTime.timestamp()
-              .difference(transmissionStartingTime)
-              .inMilliseconds
-              .toDouble()));
+      _rmsStreamController.add(RmsData(emg: emg));
     }
   }
 
@@ -303,32 +294,25 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
         var x = byteArray
             .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0,
-                Endian.little)
-            .toDouble();
+                Endian.little) * normalizationFactors[fieldIndex];
 
         var y = byteArray
             .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1,
-                Endian.little)
-            .toDouble();
+                Endian.little) * normalizationFactors[fieldIndex];
 
         var z = byteArray
             .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2,
-                Endian.little)
-            .toDouble();
-
-        fields[fieldIndex] =
-            Vector3(x, y, z) * normalizationFactors[fieldIndex];
+        
+                Endian.little) * normalizationFactors[fieldIndex];
+        fields[fieldIndex] = Vector3(x, y, z);
       }
 
       // sends IMU data to app
       _imuStreamController.add(ImuData(
-          acceleration: fields[0],
-          angularVelocity: fields[1],
-          magneticField: fields[2],
-          timestamp: DateTime.timestamp()
-              .difference(transmissionStartingTime)
-              .inMilliseconds
-              .toDouble()));
+        acceleration: fields[0],
+        magneticField: fields[2],
+        angularVelocity: fields[1],
+      ));
     }
   }
 
@@ -376,30 +360,26 @@ class ImuData {
   final Vector3 acceleration;
   final Vector3 angularVelocity;
   final Vector3 magneticField;
-  final double timestamp;
 
   ImuData({
     required this.acceleration,
     required this.angularVelocity,
     required this.magneticField,
-    required this.timestamp,
   });
 
   String toCsvString() {
-    return "${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z},${timestamp}\n";
+    return "${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
   }
 }
 
 class RmsData {
   final List<double> emg;
-  final double timestamp;
 
   RmsData({
     required this.emg,
-    required this.timestamp,
   });
 
   String toCsvString() {
-    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${timestamp}\n";
+    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]}\n";
   }
 }

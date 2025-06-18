@@ -119,7 +119,6 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   RmsData _csvLineToRmsData(List<double> line) {
     return RmsData(
         emg: line.take(8).toList(),
-        timestamp: line[8]
     );
   }
 

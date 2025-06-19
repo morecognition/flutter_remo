@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'bluetooth.dart';
+
 part 'bluetooth_event.dart';
+
 part 'bluetooth_state.dart';
 
 /// Logic to discover nearby Bluetooth devices.

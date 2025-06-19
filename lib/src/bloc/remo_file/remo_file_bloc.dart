@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
+import 'package:csv/csv.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +17,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     on<StopRecording>(_stopRecording);
     on<DiscardRecord>(_discardRecord);
     on<SaveRecord>(_saveRecord);
+    on<OpenRmsRecord>(_openRmsRecord);
     on<Reset>(_reset);
   }
 
@@ -24,32 +26,57 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     tmpDirectory = await getTemporaryDirectory();
     Directory? directory;
     if (Platform.isAndroid) {
-      directory = await getExternalStorageDirectory();
+      if(await Directory(androidDownloadPath).exists()) {
+        directory = Directory('$androidDownloadPath/$remorderFolderName');
+      } else {
+        directory = Directory('$androidAlternativeDownloadPath/$remorderFolderName');
+      }
+        
+      if(!await directory.exists()) {
+        await directory.create();
+      }
     } else if (Platform.isIOS) {
       directory = await getApplicationDocumentsDirectory();
     }
     if (directory != null) {
       externalStorageDirectory = directory;
       var uuid = const Uuid();
-      var tmpFileName = uuid.v4();
-      tmpFilePath = '${tmpDirectory.path}/$tmpFileName.csv';
+      var rmsTmpFileName = uuid.v4();
+      var imuTmpFileName = uuid.v4();
+      rmsTmpFilePath = '${tmpDirectory.path}/$rmsTmpFileName.csv';
+      imuTmpFilePath = '${tmpDirectory.path}/$imuTmpFileName.csv';
     }
-    remoDataStream = event.remoDataStream;
+    rmsDataStream = event.rmsDataStream;
+    imuDataStream = event.imuDataStream;
 
-    File tmpCsvFile = File(tmpFilePath);
-    fileSink = tmpCsvFile.openWrite();
-    remoStreamSubscription = remoDataStream.listen(
-      (remoData) {
-        fileSink.write(remoData.toCsvString());
+    File rmsTmpCsvFile = File(rmsTmpFilePath);
+    File imuTmpCsvFile = File(imuTmpFilePath);
+    
+    rmsFileSink = rmsTmpCsvFile.openWrite();
+    rmsStreamSubscription = rmsDataStream.listen(
+      (rmsData) {
+        rmsFileSink.write(rmsData.toCsvString());
       },
     );
+
+    imuFileSink = imuTmpCsvFile.openWrite();
+    imuStreamSubscription = imuDataStream.listen(
+          (imuData) {
+        imuFileSink.write(imuData.toCsvString());
+      },
+    );
+    
     emit(Recording());
   }
 
   void _stopRecording(StopRecording event, Emitter<RemoFileState> emit) {
-    remoStreamSubscription.cancel();
-    fileSink.close();
-    emit(RecordingComplete(File(tmpFilePath)));
+    rmsStreamSubscription.cancel();
+    imuStreamSubscription.cancel();
+    
+    rmsFileSink.close();
+    imuFileSink.close();
+    
+    emit(RecordingComplete(File(rmsTmpFilePath), File(imuTmpFilePath)));
   }
 
   void _discardRecord(DiscardRecord event, Emitter<RemoFileState> emit) {
@@ -58,23 +85,59 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   }
 
   void _saveRecord(SaveRecord event, Emitter<RemoFileState> emit) async {
-    final String newFilePath =
-        '${externalStorageDirectory.path}/${event.fileName}.csv';
-    File tmpFile = File(tmpFilePath);
-    File newFile = await tmpFile.copy(newFilePath);
-    emit(RecordSaved(newFile));
+    emit(SavingRecord());
+
+    final String rmsNewFilePath = '${externalStorageDirectory.path}/${event.fileName}_$rmsFileSuffix.csv';
+    final String imuNewFilePath = '${externalStorageDirectory.path}/${event.fileName}_$imuFileSuffix.csv';
+    
+    File rmsTmpFile = File(rmsTmpFilePath);
+    File rmsNewFile = await rmsTmpFile.copy(rmsNewFilePath);
+
+    File imuTmpFile = File(imuTmpFilePath);
+    File imuNewFile = await imuTmpFile.copy(imuNewFilePath);
+    
+    emit(RecordSaved(rmsNewFile, imuNewFile));
     emit(RemoFileReady());
   }
 
+  void _openRmsRecord(OpenRmsRecord event, Emitter<RemoFileState> emit) async {
+    var file = File(event.filePath);
+
+    var data = const CsvToListConverter()
+        .convert(await file.readAsString(), eol: '\n')
+        .map((list) => list.cast<double>());
+
+    var rmsData = data.map<RmsData>(_csvLineToRmsData).toList();
+    emit(RmsRecordOpened(rmsData, event.filePath));
+  }
+
   void _reset(Reset event, Emitter<RemoFileState> emit) async {
-    remoStreamSubscription.cancel();
+    rmsStreamSubscription.cancel();
     emit(RemoFileInitial());
   }
 
-  late Stream<RemoData> remoDataStream;
-  late StreamSubscription<RemoData> remoStreamSubscription;
-  late IOSink fileSink;
-  late String tmpFilePath;
+  RmsData _csvLineToRmsData(List<double> line) {
+    return RmsData(
+        emg: line.take(8).toList(),
+    );
+  }
+
+  late Stream<RmsData> rmsDataStream;
+  late StreamSubscription<RmsData> rmsStreamSubscription;
+
+  late Stream<ImuData> imuDataStream;
+  late StreamSubscription<ImuData> imuStreamSubscription;
+
+  late IOSink rmsFileSink;
+  late IOSink imuFileSink;
+  late String rmsTmpFilePath;
+  late String imuTmpFilePath;
   late Directory tmpDirectory;
   late Directory externalStorageDirectory;
+
+  static const String androidDownloadPath = '/storage/emulated/0/Downloads/';
+  static const String androidAlternativeDownloadPath = '/storage/emulated/0/Download/';
+  static const String remorderFolderName = 'remorder';
+  static const String rmsFileSuffix = 'rms';
+  static const String imuFileSuffix = 'imu';
 }

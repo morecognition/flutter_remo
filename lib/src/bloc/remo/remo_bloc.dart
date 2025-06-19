@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:bloc/bloc.dart';
 import 'package:flutter_remo/src/bloc/bluetooth/bluetooth.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:vector_math/vector_math.dart';
 
 part 'remo_event.dart';
@@ -20,18 +19,25 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const int activateSensorModeDataCode = 65; // A
   static const int headerLength = 8; // 8byte
 
+  static const double G = 9.8;
+  static const double sensorPrecision = 65535;
+  static const double accelerometerFullScale = 2 * G;
+  static const double gyroscopeFullScale = 2000.0;
+
+  static const double accelerationNormalizationFactor = 9.8 / 1000;//accelerometerFullScale / sensorPrecision;
+  static const double angularVelocityNormalizationFactor = 1 / 1000;//gyroscopeFullScale / sensorPrecision;
+
   // Remo's emg channels.
   static const int channels = 8;
   bool isTransmissionStarted = false;
 
   // Stream subscription handler.
   StreamSubscription<List<int>>? remoStreamSubscription;
-
-  // The controller for the stream to pass to the UI.
-  late StreamController<RemoData> dataController;
+  String currentDeviceName = "";
 
   // The stream to pass to the UI.
-  late Stream<RemoData> dataStream;
+  late Stream<ImuData> imuStream;
+  late Stream<RmsData> rmsStream;
 
   /// All the actual bluetooth actions are handled here.
   final Bluetooth _bluetooth = Bluetooth();
@@ -39,25 +45,35 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   /// The stream of data coming directly from the Remo device.
   Stream<List<int>>? remoDataStream;
 
+  final StreamController<RmsData> _rmsStreamController =
+      StreamController<RmsData>();
+  final StreamController<ImuData> _imuStreamController =
+      StreamController<ImuData>();
+
   RemoBloc() : super(Disconnected()) {
     on<OnConnectDevice>(_startConnecting);
     on<OnDisconnectDevice>(_startDisconnecting);
     on<OnStartTransmission>(_startTransmission);
     on<OnStopTransmission>(_stopTransmission);
     on<OnResetTransmission>(_resetTransmission);
+
+    rmsStream = _rmsStreamController.stream.asBroadcastStream();
+    imuStream = _imuStreamController.stream.asBroadcastStream();
   }
 
   /// Connects to a specific devices. The name is given by the select device event.
   void _startConnecting(OnConnectDevice event, Emitter<RemoState> emit) async {
     emit(Connecting());
+    /* Should be requested before the scan
     await Permission.bluetoothConnect.request();
     await Permission.bluetoothScan.request();
     await Permission.bluetooth.request();
     await Permission.locationWhenInUse.request();
+    */
+    currentDeviceName = event.name;
     try {
       await for (ConnectionStates state
           in await _bluetooth.startConnection(event.address)) {
-        //in await _bluetooth.startConnection("34:81:F4:EA:45:8C")) {
         switch (state) {
           case ConnectionStates.disconnected:
             emit(Disconnected());
@@ -93,8 +109,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         switch (state) {
           case ConnectionStates.disconnected:
             remoStreamSubscription?.cancel();
-            dataController.close();
-            remoDataStream = null;
+
             emit(Disconnected());
             break;
           case ConnectionStates.connected:
@@ -120,9 +135,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       OnStartTransmission _, Emitter<RemoState> emit) async {
     emit(StartingTransmission());
     if (!isTransmissionStarted) {
-      dataController = StreamController<RemoData>();
-      dataStream = dataController.stream.asBroadcastStream();
-
       // data buffer used to store data from multiple packets at a time
       List<int> buffer = [];
 
@@ -160,6 +172,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
                 switch (data.first) {
                   case RMS_IDENTIFIER_CODE:
                     _manageRMSData(data);
+                    _sendAck(data);
+                    break;
+                  case IMU_IDENTIFIER_CODE:
+                    _manageIMUData(data);
                     _sendAck(data);
                     break;
                   case GLOBAL_IDENTIFIER_CODE:
@@ -208,9 +224,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
           onError: (error) {
             //print("Subscribe error");
           },
-          onDone: () {
-            dataController.close();
-          },
+          onDone: () {},
         );
 
         // send acquisition mode message
@@ -219,13 +233,13 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
         _bluetooth.sendMessage(Uint8List.fromList(message));
 
         // emit transmission started
-        emit(TransmissionStarted(dataStream));
+        emit(TransmissionStarted(rmsStream, imuStream));
         isTransmissionStarted = true;
       } else {
         emit(ConnectionError());
       }
     } else {
-      emit(TransmissionStarted(dataStream));
+      emit(TransmissionStarted(rmsStream, imuStream));
     }
   }
 
@@ -250,14 +264,55 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       //print("EMG -> $emg");
 
       // sends EMG data to app
-      dataController.add(
-        RemoData(
-          emg: emg,
-          acceleration: Vector3(0.0, 0.0, 0.0),
-          angularVelocity: Vector3(0.0, 0.0, 0.0),
-          magneticField: Vector3(0.0, 0.0, 0.0),
-        ),
-      );
+      _rmsStreamController.add(RmsData(emg: emg));
+    }
+  }
+
+  void _manageIMUData(Uint8List data) {
+    ByteData byteArray =
+        data.sublist(headerLength).buffer.asByteData(); // take only data
+
+    const fieldCount = 3;
+    const fieldElementCount = 3;
+    const fieldElementSize = 2;
+    const fieldSize = fieldElementCount * fieldElementSize;
+    const imuLength = fieldCount * fieldSize;
+
+    const normalizationFactors = [
+      accelerationNormalizationFactor,
+      angularVelocityNormalizationFactor,
+      1.0
+    ];
+
+    // Converting the data coming from Remo.
+    //// IMU.
+    for (var dataIndex = 0;
+        dataIndex < byteArray.lengthInBytes;
+        dataIndex += imuLength) {
+      var fields = List.filled(3, Vector3.zero());
+
+      for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
+        var x = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0,
+                Endian.little) * normalizationFactors[fieldIndex];
+
+        var y = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1,
+                Endian.little) * normalizationFactors[fieldIndex];
+
+        var z = byteArray
+            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2,
+        
+                Endian.little) * normalizationFactors[fieldIndex];
+        fields[fieldIndex] = Vector3(x, y, z);
+      }
+
+      // sends IMU data to app
+      _imuStreamController.add(ImuData(
+        acceleration: fields[0],
+        magneticField: fields[2],
+        angularVelocity: fields[1],
+      ));
     }
   }
 
@@ -301,22 +356,30 @@ enum TransmissionMode {
   rawImu,
 }
 
-class RemoData {
-  //final Uint32 timestamp;
-  final List<double> emg;
+class ImuData {
   final Vector3 acceleration;
   final Vector3 angularVelocity;
   final Vector3 magneticField;
 
-  RemoData({
-    //required this.timestamp,
-    required this.emg,
+  ImuData({
     required this.acceleration,
     required this.angularVelocity,
     required this.magneticField,
   });
 
   String toCsvString() {
-    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]},${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
+    return "${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
+  }
+}
+
+class RmsData {
+  final List<double> emg;
+
+  RmsData({
+    required this.emg,
+  });
+
+  String toCsvString() {
+    return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]}\n";
   }
 }

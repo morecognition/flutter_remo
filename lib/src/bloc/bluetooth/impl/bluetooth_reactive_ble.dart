@@ -152,7 +152,7 @@ class BluetoothReactiveBLE implements Bluetooth {
         //print("Trovato Remo con id: ${device.id}");
         _foundBleUARTDevices.add(device);
         infoStreamController.add(
-          DeviceInfos(device.id,
+          DeviceInfos(device.name,
               _buildMACAddressFromManufacturerData(device.manufacturerData)),
         );
         infoStreamController.close();

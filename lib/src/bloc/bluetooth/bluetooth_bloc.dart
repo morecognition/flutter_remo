@@ -34,7 +34,12 @@ class BluetoothBloc extends Bloc<BluetoothEvent, BluetoothState> {
     emit(DiscoveredDevices(event.deviceNames, event.deviceAddresses));
   }
 
+  void _reset(OnReset event, Emitter<BluetoothState> emit) async {
+    emit(BluetoothInitial());
+  }
+
   BluetoothBloc() : super(BluetoothInitial()) {
+    on<OnReset>(_reset);
     on<OnStartDiscovery>(_startDiscovery);
     on<OnDiscoveredDevices>(_discoveredDevices);
   }

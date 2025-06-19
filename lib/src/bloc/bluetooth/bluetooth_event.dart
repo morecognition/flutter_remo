@@ -3,6 +3,9 @@ part of 'bluetooth_bloc.dart';
 /// Classes inheriting from this are used to represent events coming from the UI.
 abstract class BluetoothEvent {}
 
+/// Resets the bluetooth to base values
+class OnReset extends BluetoothEvent {}
+
 /// Starts devices discovery through bluetooth.
 class OnStartDiscovery extends BluetoothEvent {}
 

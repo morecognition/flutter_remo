@@ -32,4 +32,31 @@ extension ListExtensions on List<double> {
   double average() {
     return reduce((a, b) => (a + b) / 2);
   }
+
+  double sum() {
+    return reduce((a, b) => a + b);
+  }
+
+  double percentile(double percentile) {
+    if (isEmpty) {
+      throw ArgumentError("Data list cannot be empty");
+    }
+
+    // Sort the data
+    final sorted = List<double>.from(this)..sort();
+
+    // Compute the rank (percentile should be between 0 and 100)
+    final rank = (percentile / 100) * (sorted.length - 1);
+    final lowerIndex = rank.floor();
+    final upperIndex = rank.ceil();
+
+    if (lowerIndex == upperIndex) {
+      return sorted[lowerIndex];
+    }
+
+    // Interpolate
+    final lowerValue = sorted[lowerIndex];
+    final upperValue = sorted[upperIndex];
+    return lowerValue + (upperValue - lowerValue) * (rank - lowerIndex);
+  }
 }

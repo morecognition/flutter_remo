@@ -19,8 +19,8 @@ class ProportionalControlBloc
   final StreamController<double> _mvcStreamController =
       StreamController<double>();
 
-  final List<double> _mvcs = List.filled(8, 0);
-  final List<double> _baseValues = List.filled(8, 0);
+  double _mvc = 0;
+  double _baseValue = 0;
 
   StreamSubscription<RmsData>? _rmsStreamSubscription;
 
@@ -34,12 +34,11 @@ class ProportionalControlBloc
   void _recordBaseValue(StartRecordingBaseValue event,
       Emitter<PropotionalControlState> emit) async {
     _rmsStreamSubscription?.cancel();
-    _baseValues.fillRange(0, _baseValues.length, 0);
 
     _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
-      _baseValues.setAverage(rmsData.emg);
+      _baseValue = (_baseValue + rmsData.emg.sum()) / 2;
 
-      _baseValueStreamController.add(_baseValues.average());
+      _baseValueStreamController.add(_baseValue);
     });
 
     var startTime = DateTime.now();
@@ -62,12 +61,18 @@ class ProportionalControlBloc
   void _recordMvc(
       StartRecordingMvc event, Emitter<PropotionalControlState> emit) async {
     _rmsStreamSubscription?.cancel();
-    _mvcs.fillRange(0, _mvcs.length, 0);
+    var values = List<double>.empty(growable: true);
 
     _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
-      _mvcs.setAverage(rmsData.emg);
+      values.add(rmsData.emg.sum());
 
-      _mvcStreamController.add(_mvcs.average());
+      var percentile = values.percentile(95);
+      var topValues = values
+        .where((value) => value >- percentile)
+        .toList();
+
+      _mvc = topValues.average();
+      _mvcStreamController.add(_mvc);
     });
 
     var startTime = DateTime.now();
@@ -92,7 +97,16 @@ class ProportionalControlBloc
     _rmsStreamSubscription?.cancel();
 
     var outputStream = event.rmsDataStream
-        .map((rmsData) => rmsData.emg.divide(_mvcs).average());
+        .map((rmsData) {
+          var denominator = _mvc - _baseValue;
+
+          if(denominator <= 0.0001) {
+            return 0.0;
+          }
+
+          var normalized = (rmsData.emg.sum() - _baseValue) / denominator;
+          return clampDouble(normalized, 0, 1);
+        });
 
     emit(Active(outputStream));
   }

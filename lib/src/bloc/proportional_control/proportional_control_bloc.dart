@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 import 'package:flutter_remo/src/utils/list_extensions.dart';
 
@@ -11,8 +12,12 @@ class ProportionalControlBloc
     extends Bloc<ProportionalControlEvent, PropotionalControlState> {
   static const baseValueRecordingTime = Duration(seconds: 5);
   static const mvcRecordingTime = Duration(seconds: 3);
+  static const progressStreamUpdateFrequency = Duration(milliseconds: 16);
 
-  late Stream<double> outputStream;
+  final StreamController<double> _baseValueStreamController =
+      StreamController<double>();
+  final StreamController<double> _mvcStreamController =
+      StreamController<double>();
 
   final List<double> _mvcs = List.filled(8, 0);
   final List<double> _baseValues = List.filled(8, 0);
@@ -28,14 +33,25 @@ class ProportionalControlBloc
 
   void _recordBaseValue(StartRecordingBaseValue event,
       Emitter<PropotionalControlState> emit) async {
-    emit(RecordingBaseValue());
-
     _rmsStreamSubscription?.cancel();
-    _baseValues.fillRange(0, _baseValues.length, double.infinity);
+    _baseValues.fillRange(0, _baseValues.length, 0);
 
-    _rmsStreamSubscription = event.rmsDataStream
-        .listen((rmsData) => _baseValues.setAverage(rmsData.emg));
+    _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
+      _baseValues.setAverage(rmsData.emg);
 
+      _baseValueStreamController.add(_baseValues.average());
+    });
+
+    var startTime = DateTime.now();
+    var progressStream = Stream.periodic(
+        progressStreamUpdateFrequency,
+        (_) => clampDouble(
+            DateTime.now().difference(startTime).inMilliseconds /
+                baseValueRecordingTime.inMilliseconds,
+            0,
+            1));
+
+    emit(RecordingBaseValue(_baseValueStreamController.stream, progressStream));
     await Future.delayed(baseValueRecordingTime);
 
     _rmsStreamSubscription?.cancel();
@@ -45,14 +61,25 @@ class ProportionalControlBloc
 
   void _recordMvc(
       StartRecordingMvc event, Emitter<PropotionalControlState> emit) async {
-    emit(RecordingMvc());
-
     _rmsStreamSubscription?.cancel();
     _mvcs.fillRange(0, _mvcs.length, 0);
 
-    _rmsStreamSubscription =
-        event.rmsDataStream.listen((rmsData) => _mvcs.setAverage(rmsData.emg));
+    _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
+      _mvcs.setAverage(rmsData.emg);
 
+      _mvcStreamController.add(_mvcs.average());
+    });
+
+    var startTime = DateTime.now();
+    var progressStream = Stream.periodic(
+        progressStreamUpdateFrequency,
+        (_) => clampDouble(
+            DateTime.now().difference(startTime).inMilliseconds /
+                mvcRecordingTime.inMilliseconds,
+            0,
+            1));
+
+    emit(RecordingMvc(_mvcStreamController.stream, progressStream));
     await Future.delayed(mvcRecordingTime);
 
     _rmsStreamSubscription?.cancel();
@@ -60,13 +87,12 @@ class ProportionalControlBloc
     add(StartProportionalControl(event.rmsDataStream));
   }
 
-  void _startProportionalControl(StartProportionalControl event,
-      Emitter<PropotionalControlState> emit) {
+  void _startProportionalControl(
+      StartProportionalControl event, Emitter<PropotionalControlState> emit) {
     _rmsStreamSubscription?.cancel();
 
-    outputStream = event.rmsDataStream
-        .map((rmsData) => rmsData.emg.divide(_mvcs).average())
-        .asBroadcastStream();
+    var outputStream = event.rmsDataStream
+        .map((rmsData) => rmsData.emg.divide(_mvcs).average());
 
     emit(Active(outputStream));
   }

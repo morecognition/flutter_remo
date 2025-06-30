@@ -19,14 +19,6 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const int activateSensorModeDataCode = 65; // A
   static const int headerLength = 8; // 8byte
 
-  static const double G = 9.8;
-  static const double sensorPrecision = 65535;
-  static const double accelerometerFullScale = 2 * G;
-  static const double gyroscopeFullScale = 2000.0;
-
-  static const double accelerationNormalizationFactor = 9.8 / 1000;//accelerometerFullScale / sensorPrecision;
-  static const double angularVelocityNormalizationFactor = 1 / 1000;//gyroscopeFullScale / sensorPrecision;
-
   // Remo's emg channels.
   static const int channels = 8;
   bool isTransmissionStarted = false;
@@ -279,8 +271,8 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     const imuLength = fieldCount * fieldSize;
 
     const normalizationFactors = [
-      accelerationNormalizationFactor,
-      angularVelocityNormalizationFactor,
+      ImuSpecs.accelerationNormalizationFactor,
+      ImuSpecs.angularVelocityNormalizationFactor,
       1.0
     ];
 
@@ -370,6 +362,10 @@ class ImuData {
   String toCsvString() {
     return "${acceleration.x},${acceleration.y},${acceleration.z},${angularVelocity.x},${angularVelocity.y},${angularVelocity.z},${magneticField.x},${magneticField.y},${magneticField.z}\n";
   }
+
+  static String getCsvHeader() {
+    return "Acceleration.x,Acceleration.y,Acceleration.z,AngularVelocity.x,AngularVelocity.y,AngularVelocity.z,MagneticField.x,MagneticField.y,MagneticField.z\n";
+  }
 }
 
 class RmsData {
@@ -381,5 +377,47 @@ class RmsData {
 
   String toCsvString() {
     return "${emg[0]},${emg[1]},${emg[2]},${emg[3]},${emg[4]},${emg[5]},${emg[6]},${emg[7]}\n";
+  }
+
+  static String getCsvHeader() {
+    return "Channel 1,Channel 2,Channel 3,Channel 4,Channel 5,Channel 6,Channel 7,Channel 8\n";
+  }
+}
+
+class ImuSpecs {
+  static const double samplingRate = 1 / 100;
+  static const double G = 9.8;
+  static const double sensorResolution = 65535;
+  static const double accelerometerFullScale = 2 * G;
+  static const double gyroscopeFullScale = 2000.0;
+
+  static const double accelerationNormalizationFactor = 9.8 / 1000;
+  static const double angularVelocityNormalizationFactor = 1 / 1000;
+
+  static const double version = 1;
+
+  static String getCsvHeader() {
+    return "File version,Sampling rate,Resolution,Accelerometer Fullscale,Gyroscope fullscale,Acceleration normalization factor,Angular velocity normalization factor\n";
+  }
+
+  static String toCsvString() {
+    return "$version,100hz,${sensorResolution.toInt()},±2G,±${gyroscopeFullScale.toInt()}dps,${accelerationNormalizationFactor.toStringAsFixed(4)},${angularVelocityNormalizationFactor.toStringAsFixed(3)}\n";
+  }
+}
+
+class RmsSpecs {
+  static const double samplingRate = 1 / 16;
+  static const double sensorResolution = 65535;
+  static const double fullscale = 4500000;
+  static const double normalizationFactor = 4500000 / (65535 * 24);
+
+  static const double version = 1;
+
+  static String getCsvHeader() {
+    return "File version,Sampling rate,Resolution,Fullscale,Normalization factor\n";
+  }
+
+  static String toCsvString() {
+    return "$version,16hz,${sensorResolution.toInt()},±${fullscale.toInt()}mv,$normalizationFactor\n";
   }
 }

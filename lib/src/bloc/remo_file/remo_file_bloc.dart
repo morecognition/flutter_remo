@@ -12,6 +12,25 @@ part 'remo_file_event.dart';
 part 'remo_file_state.dart';
 
 class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
+  late Stream<RmsData> rmsDataStream;
+  late StreamSubscription<RmsData> rmsStreamSubscription;
+
+  late Stream<ImuData> imuDataStream;
+  late StreamSubscription<ImuData> imuStreamSubscription;
+
+  late IOSink rmsFileSink;
+  late IOSink imuFileSink;
+  late String rmsTmpFilePath;
+  late String imuTmpFilePath;
+  late Directory tmpDirectory;
+  late Directory externalStorageDirectory;
+
+  static const String androidDownloadPath = '/storage/emulated/0/Downloads/';
+  static const String androidAlternativeDownloadPath = '/storage/emulated/0/Download/';
+  static const String remorderFolderName = 'remorder';
+  static const String rmsFileSuffix = 'rms';
+  static const String imuFileSuffix = 'imu';
+  
   RemoFileBloc() : super(RemoFileInitial()) {
     on<StartRecording>(_startRecording);
     on<StopRecording>(_stopRecording);
@@ -53,6 +72,13 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     File imuTmpCsvFile = File(imuTmpFilePath);
     
     rmsFileSink = rmsTmpCsvFile.openWrite();
+
+    rmsFileSink.write(RmsSpecs.getCsvHeader());
+    rmsFileSink.write(RmsSpecs.toCsvString());
+    rmsFileSink.write("\n");
+
+    rmsFileSink.write(RmsData.getCsvHeader());
+
     rmsStreamSubscription = rmsDataStream.listen(
       (rmsData) {
         rmsFileSink.write(rmsData.toCsvString());
@@ -60,6 +86,12 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     );
 
     imuFileSink = imuTmpCsvFile.openWrite();
+
+    imuFileSink.write(ImuSpecs.getCsvHeader());
+    imuFileSink.write(ImuSpecs.toCsvString());
+    imuFileSink.write("\n");
+
+    imuFileSink.write(ImuData.getCsvHeader());
     imuStreamSubscription = imuDataStream.listen(
           (imuData) {
         imuFileSink.write(imuData.toCsvString());
@@ -105,6 +137,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
 
     var data = const CsvToListConverter()
         .convert(await file.readAsString(), eol: '\n')
+        .skip(4)
         .map((list) => list.cast<double>());
 
     var rmsData = data.map<RmsData>(_csvLineToRmsData).toList();
@@ -121,23 +154,4 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
         emg: line.take(8).toList(),
     );
   }
-
-  late Stream<RmsData> rmsDataStream;
-  late StreamSubscription<RmsData> rmsStreamSubscription;
-
-  late Stream<ImuData> imuDataStream;
-  late StreamSubscription<ImuData> imuStreamSubscription;
-
-  late IOSink rmsFileSink;
-  late IOSink imuFileSink;
-  late String rmsTmpFilePath;
-  late String imuTmpFilePath;
-  late Directory tmpDirectory;
-  late Directory externalStorageDirectory;
-
-  static const String androidDownloadPath = '/storage/emulated/0/Downloads/';
-  static const String androidAlternativeDownloadPath = '/storage/emulated/0/Download/';
-  static const String remorderFolderName = 'remorder';
-  static const String rmsFileSuffix = 'rms';
-  static const String imuFileSuffix = 'imu';
 }

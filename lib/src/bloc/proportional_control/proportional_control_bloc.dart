@@ -52,7 +52,7 @@ class ProportionalControlBloc
             0,
             1));
 
-    emit(RecordingBaseValue(_baseValueStreamController.stream, progressStream));
+    emit(RecordingBaseValue(_baseValueStreamController.stream.asBroadcastStream(), progressStream));
     await Future.delayed(baseValueRecordingTime);
 
     _rmsStreamSubscription?.cancel();
@@ -89,7 +89,7 @@ class ProportionalControlBloc
             0,
             1));
 
-    emit(RecordingMvc(_mvcStreamController.stream, progressStream));
+    emit(RecordingMvc(_mvcStreamController.stream.asBroadcastStream(), progressStream));
     await Future.delayed(mvcRecordingTime);
 
     _rmsStreamSubscription?.cancel();
@@ -116,7 +116,7 @@ class ProportionalControlBloc
       return clampDouble(normalized, 0, 1);
     });
 
-    emit(Active(outputStream, _baseValue, _mvc));
+    emit(Active(outputStream.asBroadcastStream(), _baseValue, _mvc));
   }
 
   void _stopOperations(

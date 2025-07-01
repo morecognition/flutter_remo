@@ -15,9 +15,9 @@ class ProportionalControlBloc
   static const progressStreamUpdateFrequency = Duration(milliseconds: 16);
 
   final StreamController<double> _baseValueStreamController =
-      StreamController<double>();
+      StreamController<double>.broadcast();
   final StreamController<double> _mvcStreamController =
-      StreamController<double>();
+      StreamController<double>.broadcast();
 
   double _mvc = 0;
   double _baseValue = 0;
@@ -52,7 +52,7 @@ class ProportionalControlBloc
             0,
             1));
 
-    emit(RecordingBaseValue(_baseValueStreamController.stream.asBroadcastStream(), progressStream));
+    emit(RecordingBaseValue(_baseValueStreamController.stream, progressStream));
     await Future.delayed(baseValueRecordingTime);
 
     _rmsStreamSubscription?.cancel();
@@ -89,7 +89,7 @@ class ProportionalControlBloc
             0,
             1));
 
-    emit(RecordingMvc(_mvcStreamController.stream.asBroadcastStream(), progressStream));
+    emit(RecordingMvc(_mvcStreamController.stream, progressStream));
     await Future.delayed(mvcRecordingTime);
 
     _rmsStreamSubscription?.cancel();

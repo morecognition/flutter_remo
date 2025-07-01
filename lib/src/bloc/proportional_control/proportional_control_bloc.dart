@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 
 part 'proportional_control_event.dart';
+
 part 'propotional_control_state.dart';
 
 class ProportionalControlBloc
@@ -25,7 +26,9 @@ class ProportionalControlBloc
 
   ProportionalControlBloc() : super(Inactive()) {
     on<StartRecordingBaseValue>(_recordBaseValue);
+    on<PrepareRecordingMvc>(_prepareMvc);
     on<StartRecordingMvc>(_recordMvc);
+    on<PrepareProportionalControl>(_preparePropotionalControl);
     on<StartProportionalControl>(_startProportionalControl);
     on<StopOperations>(_stopOperations);
   }
@@ -54,6 +57,11 @@ class ProportionalControlBloc
 
     _rmsStreamSubscription?.cancel();
 
+    emit(PostBaseValue());
+  }
+
+  void _prepareMvc(
+      PrepareRecordingMvc event, Emitter<PropotionalControlState> emit) {
     emit(ReadyToRecordMvc());
   }
 
@@ -66,9 +74,7 @@ class ProportionalControlBloc
       values.add(rmsData.emg.sum());
 
       var percentile = values.percentile(95);
-      var topValues = values
-        .where((value) => value >- percentile)
-        .toList();
+      var topValues = values.where((value) => value > -percentile).toList();
 
       _mvc = topValues.average();
       _mvcStreamController.add(_mvc);
@@ -87,6 +93,11 @@ class ProportionalControlBloc
     await Future.delayed(mvcRecordingTime);
 
     _rmsStreamSubscription?.cancel();
+    emit(PostMvcValue());
+  }
+
+  void _preparePropotionalControl(
+      PrepareProportionalControl event, Emitter<PropotionalControlState> emit) {
     emit(ReadyToStart());
   }
 
@@ -94,17 +105,16 @@ class ProportionalControlBloc
       StartProportionalControl event, Emitter<PropotionalControlState> emit) {
     _rmsStreamSubscription?.cancel();
 
-    var outputStream = event.rmsDataStream
-        .map((rmsData) {
-          var denominator = _mvc - _baseValue;
+    var outputStream = event.rmsDataStream.map((rmsData) {
+      var denominator = _mvc - _baseValue;
 
-          if(denominator <= 0.0001) {
-            return 0.0;
-          }
+      if (denominator <= 0.0001) {
+        return 0.0;
+      }
 
-          var normalized = (rmsData.emg.sum() - _baseValue) / denominator;
-          return clampDouble(normalized, 0, 1);
-        });
+      var normalized = (rmsData.emg.sum() - _baseValue) / denominator;
+      return clampDouble(normalized, 0, 1);
+    });
 
     emit(Active(outputStream, _baseValue, _mvc));
   }

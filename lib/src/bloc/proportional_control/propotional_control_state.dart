@@ -10,6 +10,8 @@ class RecordingBaseValue extends PropotionalControlState {
   final Stream<double> progressStream;
 }
 
+class PostBaseValue extends PropotionalControlState {}
+
 class ReadyToRecordMvc extends PropotionalControlState {}
 
 class RecordingMvc extends PropotionalControlState {
@@ -17,6 +19,8 @@ class RecordingMvc extends PropotionalControlState {
   final Stream<double> mvcStream;
   final Stream<double> progressStream;
 }
+
+class PostMvcValue extends PropotionalControlState {}
 
 class ReadyToStart extends PropotionalControlState {}
 

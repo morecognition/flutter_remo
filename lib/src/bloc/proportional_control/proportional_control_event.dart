@@ -7,10 +7,14 @@ class StartRecordingBaseValue extends ProportionalControlEvent {
   final Stream<RmsData> rmsDataStream;
 }
 
+class PrepareRecordingMvc extends ProportionalControlEvent {}
+
 class StartRecordingMvc extends ProportionalControlEvent {
   StartRecordingMvc(this.rmsDataStream);
   final Stream<RmsData> rmsDataStream;
 }
+
+class PrepareProportionalControl extends ProportionalControlEvent {}
 
 class StartProportionalControl extends ProportionalControlEvent {
   StartProportionalControl(this.rmsDataStream);

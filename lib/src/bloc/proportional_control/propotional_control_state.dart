@@ -10,13 +10,19 @@ class RecordingBaseValue extends PropotionalControlState {
   final Stream<double> progressStream;
 }
 
+class ReadyToRecordMvc extends PropotionalControlState {}
+
 class RecordingMvc extends PropotionalControlState {
   RecordingMvc(this.mvcStream, this.progressStream);
   final Stream<double> mvcStream;
   final Stream<double> progressStream;
 }
 
+class ReadyToStart extends PropotionalControlState {}
+
 class Active extends PropotionalControlState {
-  Active(this.cyclicFeedbackStream);
+  Active(this.cyclicFeedbackStream, this.baseValue, this.mvc);
   final Stream<double> cyclicFeedbackStream;
+  final double baseValue;
+  final double mvc;
 }

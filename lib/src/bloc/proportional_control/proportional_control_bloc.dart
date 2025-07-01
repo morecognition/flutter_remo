@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_remo/flutter_remo.dart';
-import 'package:flutter_remo/src/utils/list_extensions.dart';
 
 part 'proportional_control_event.dart';
 part 'propotional_control_state.dart';
@@ -55,7 +54,7 @@ class ProportionalControlBloc
 
     _rmsStreamSubscription?.cancel();
 
-    add(StartRecordingMvc(event.rmsDataStream));
+    emit(ReadyToRecordMvc());
   }
 
   void _recordMvc(
@@ -88,8 +87,7 @@ class ProportionalControlBloc
     await Future.delayed(mvcRecordingTime);
 
     _rmsStreamSubscription?.cancel();
-
-    add(StartProportionalControl(event.rmsDataStream));
+    emit(ReadyToStart());
   }
 
   void _startProportionalControl(
@@ -108,7 +106,7 @@ class ProportionalControlBloc
           return clampDouble(normalized, 0, 1);
         });
 
-    emit(Active(outputStream));
+    emit(Active(outputStream, _baseValue, _mvc));
   }
 
   void _stopOperations(

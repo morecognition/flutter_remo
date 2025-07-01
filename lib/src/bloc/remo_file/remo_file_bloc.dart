@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter_remo/flutter_remo.dart';
+import 'package:flutter_remo/src/utils/file_utils.dart';
 import 'package:meta/meta.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -25,9 +26,6 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   late Directory tmpDirectory;
   late Directory externalStorageDirectory;
 
-  static const String androidDownloadPath = '/storage/emulated/0/Downloads/';
-  static const String androidAlternativeDownloadPath = '/storage/emulated/0/Download/';
-  static const String remorderFolderName = 'remorder';
   static const String rmsFileSuffix = 'rms';
   static const String imuFileSuffix = 'imu';
   
@@ -43,20 +41,8 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   void _startRecording(
       StartRecording event, Emitter<RemoFileState> emit) async {
     tmpDirectory = await getTemporaryDirectory();
-    Directory? directory;
-    if (Platform.isAndroid) {
-      if(await Directory(androidDownloadPath).exists()) {
-        directory = Directory('$androidDownloadPath/$remorderFolderName');
-      } else {
-        directory = Directory('$androidAlternativeDownloadPath/$remorderFolderName');
-      }
-        
-      if(!await directory.exists()) {
-        await directory.create();
-      }
-    } else if (Platform.isIOS) {
-      directory = await getApplicationDocumentsDirectory();
-    }
+    var directory = await FileUtils.getDownloadDirectory();
+    
     if (directory != null) {
       externalStorageDirectory = directory;
       var uuid = const Uuid();
@@ -73,12 +59,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     
     rmsFileSink = rmsTmpCsvFile.openWrite();
 
-    rmsFileSink.write(RmsSpecs.getCsvHeader());
-    rmsFileSink.write(RmsSpecs.toCsvString());
-    rmsFileSink.write("\n");
-
-    rmsFileSink.write(RmsData.getCsvHeader());
-
+    _writeRmsHeaders(rmsFileSink);
     rmsStreamSubscription = rmsDataStream.listen(
       (rmsData) {
         rmsFileSink.write(rmsData.toCsvString());
@@ -86,12 +67,8 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     );
 
     imuFileSink = imuTmpCsvFile.openWrite();
+    _writeImuHeaders(imuFileSink);
 
-    imuFileSink.write(ImuSpecs.getCsvHeader());
-    imuFileSink.write(ImuSpecs.toCsvString());
-    imuFileSink.write("\n");
-
-    imuFileSink.write(ImuData.getCsvHeader());
     imuStreamSubscription = imuDataStream.listen(
           (imuData) {
         imuFileSink.write(imuData.toCsvString());
@@ -108,7 +85,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     rmsFileSink.close();
     imuFileSink.close();
     
-    emit(RecordingComplete(File(rmsTmpFilePath), File(imuTmpFilePath)));
+    emit(RecordingComplete());
   }
 
   void _discardRecord(DiscardRecord event, Emitter<RemoFileState> emit) {
@@ -123,12 +100,12 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     final String imuNewFilePath = '${externalStorageDirectory.path}/${event.fileName}_$imuFileSuffix.csv';
     
     File rmsTmpFile = File(rmsTmpFilePath);
-    File rmsNewFile = await rmsTmpFile.copy(rmsNewFilePath);
+    await rmsTmpFile.copy(rmsNewFilePath);
 
     File imuTmpFile = File(imuTmpFilePath);
-    File imuNewFile = await imuTmpFile.copy(imuNewFilePath);
+    await imuTmpFile.copy(imuNewFilePath);
     
-    emit(RecordSaved(rmsNewFile, imuNewFile));
+    emit(RecordSaved());
     emit(RemoFileReady());
   }
 
@@ -146,6 +123,7 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
 
   void _reset(Reset event, Emitter<RemoFileState> emit) async {
     rmsStreamSubscription.cancel();
+    imuStreamSubscription.cancel();
     emit(RemoFileInitial());
   }
 
@@ -153,5 +131,19 @@ class RemoFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     return RmsData(
         emg: line.take(8).toList(),
     );
+  }
+
+  void _writeRmsHeaders(IOSink rmsFileSink) {
+    rmsFileSink.write(RmsSpecs.getCsvHeader());
+    rmsFileSink.write(RmsSpecs.toCsvString());
+    rmsFileSink.write("\n");
+    rmsFileSink.write(RmsData.getCsvHeader());
+  }
+
+  void _writeImuHeaders(IOSink imuFileSink) {
+    imuFileSink.write(ImuSpecs.getCsvHeader());
+    imuFileSink.write(ImuSpecs.toCsvString());
+    imuFileSink.write("\n");
+    imuFileSink.write(ImuData.getCsvHeader());
   }
 }

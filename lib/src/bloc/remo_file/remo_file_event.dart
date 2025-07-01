@@ -10,6 +10,14 @@ class StartRecording extends RemoFileEvent {
   StartRecording(this.rmsDataStream, this.imuDataStream);
 }
 
+class StartRecordingBiofeedback extends RemoFileEvent {
+  final Stream<double> cyclicFeedbackStream;
+  final double baseValue;
+  final double mvc;
+
+  StartRecordingBiofeedback(this.cyclicFeedbackStream, this.baseValue, this.mvc);
+}
+
 class StopRecording extends RemoFileEvent {}
 
 class SaveRecord extends RemoFileEvent {

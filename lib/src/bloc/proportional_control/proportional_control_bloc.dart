@@ -14,15 +14,20 @@ class ProportionalControlBloc
   static const mvcRecordingTime = Duration(seconds: 3);
   static const progressStreamUpdateFrequency = Duration(milliseconds: 16);
 
+  static const repetitionThresholds = [0.15, 0.85];
+
   final StreamController<double> _baseValueStreamController =
       StreamController<double>.broadcast();
   final StreamController<double> _mvcStreamController =
       StreamController<double>.broadcast();
+  final StreamController<int> _repetitionsStreamController =
+      StreamController<int>.broadcast();
 
   double _mvc = 0;
   double _baseValue = 0;
 
   StreamSubscription<RmsData>? _rmsStreamSubscription;
+  StreamSubscription<double>? _outputStreamSubscription;
 
   ProportionalControlBloc() : super(Inactive()) {
     on<StartRecordingBaseValue>(_recordBaseValue);
@@ -35,7 +40,7 @@ class ProportionalControlBloc
 
   void _recordBaseValue(StartRecordingBaseValue event,
       Emitter<PropotionalControlState> emit) async {
-    _rmsStreamSubscription?.cancel();
+    _clearSubscriptions();
 
     _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
       _baseValue = (_baseValue + rmsData.emg.sum()) / 2;
@@ -62,12 +67,13 @@ class ProportionalControlBloc
 
   void _prepareMvc(
       PrepareRecordingMvc event, Emitter<PropotionalControlState> emit) {
+    _clearSubscriptions();
     emit(ReadyToRecordMvc());
   }
 
   void _recordMvc(
       StartRecordingMvc event, Emitter<PropotionalControlState> emit) async {
-    _rmsStreamSubscription?.cancel();
+    _clearSubscriptions();
     var values = List<double>.empty(growable: true);
 
     _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
@@ -98,12 +104,13 @@ class ProportionalControlBloc
 
   void _preparePropotionalControl(
       PrepareProportionalControl event, Emitter<PropotionalControlState> emit) {
+    _clearSubscriptions();
     emit(ReadyToStart());
   }
 
   void _startProportionalControl(
       StartProportionalControl event, Emitter<PropotionalControlState> emit) {
-    _rmsStreamSubscription?.cancel();
+    _clearSubscriptions();
 
     var outputStream = event.rmsDataStream.map((rmsData) {
       var denominator = _mvc - _baseValue;
@@ -114,21 +121,41 @@ class ProportionalControlBloc
 
       var normalized = (rmsData.emg.sum() - _baseValue) / denominator;
       return clampDouble(normalized, 0, 1);
+    }).asBroadcastStream();
+
+    var repetitions = 0;
+    var repetitionPhaseUp = true;
+    outputStream.listen((feedback) {
+      if (repetitionPhaseUp && feedback >= repetitionThresholds[1]) {
+        repetitionPhaseUp = false;
+        return;
+      }
+
+      if (!repetitionPhaseUp && feedback <= repetitionThresholds[0]) {
+        _repetitionsStreamController.add(++repetitions);
+        repetitionPhaseUp = true;
+        return;
+      }
     });
 
-    emit(Active(outputStream.asBroadcastStream(), _baseValue, _mvc));
+    emit(Active(
+        outputStream, _repetitionsStreamController.stream, _baseValue, _mvc));
   }
 
   void _stopOperations(
       StopOperations event, Emitter<PropotionalControlState> emit) {
-    _rmsStreamSubscription?.cancel();
+    _clearSubscriptions();
     emit(Inactive());
   }
 
   @override
   Future<void> close() {
-    _rmsStreamSubscription?.cancel();
-
+    _clearSubscriptions();
     return super.close();
+  }
+
+  void _clearSubscriptions() {
+    _rmsStreamSubscription?.cancel();
+    _outputStreamSubscription?.cancel();
   }
 }

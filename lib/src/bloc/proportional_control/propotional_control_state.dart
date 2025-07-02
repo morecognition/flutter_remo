@@ -25,8 +25,9 @@ class PostMvcValue extends PropotionalControlState {}
 class ReadyToStart extends PropotionalControlState {}
 
 class Active extends PropotionalControlState {
-  Active(this.cyclicFeedbackStream, this.baseValue, this.mvc);
+  Active(this.cyclicFeedbackStream, this.repetitionsStream, this.baseValue, this.mvc);
   final Stream<double> cyclicFeedbackStream;
+  final Stream<int> repetitionsStream;
   final double baseValue;
   final double mvc;
 }

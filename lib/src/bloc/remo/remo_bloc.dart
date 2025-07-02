@@ -18,6 +18,7 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
   static const int acquisitionModeDataCode = 83; // S
   static const int activateSensorModeDataCode = 65; // A
   static const int headerLength = 8; // 8byte
+  static const Duration packedFrequency = Duration(seconds: 1); // 8byte
 
   // Remo's emg channels.
   static const int channels = 8;
@@ -235,10 +236,11 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
     }
   }
 
-  void _manageRMSData(Uint8List data) {
+  void _manageRMSData(Uint8List data) async {
     ByteData byteArray =
         data.sublist(headerLength).buffer.asByteData(); // take only data
 
+    var packetCount = byteArray.lengthInBytes / (channels * 2);
     // Converting the data coming from Remo.
     //// EMG.
     for (int dataIndex = 0;
@@ -253,10 +255,10 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
             (65535 * 24);
       }
 
-      //print("EMG -> $emg");
-
-      // sends EMG data to app
       _rmsStreamController.add(RmsData(emg: emg));
+      await Future.delayed(Duration(
+          milliseconds:
+              (packedFrequency.inSeconds / packetCount * 1000).truncate()));
     }
   }
 
@@ -284,18 +286,20 @@ class RemoBloc extends Bloc<RemoEvent, RemoState> {
       var fields = List.filled(3, Vector3.zero());
 
       for (var fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
-        var x = byteArray
-            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 0,
-                Endian.little) * normalizationFactors[fieldIndex];
+        var x = byteArray.getInt16(
+                dataIndex + fieldSize * fieldIndex + fieldElementSize * 0,
+                Endian.little) *
+            normalizationFactors[fieldIndex];
 
-        var y = byteArray
-            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 1,
-                Endian.little) * normalizationFactors[fieldIndex];
+        var y = byteArray.getInt16(
+                dataIndex + fieldSize * fieldIndex + fieldElementSize * 1,
+                Endian.little) *
+            normalizationFactors[fieldIndex];
 
-        var z = byteArray
-            .getInt16(dataIndex + fieldSize * fieldIndex + fieldElementSize * 2,
-        
-                Endian.little) * normalizationFactors[fieldIndex];
+        var z = byteArray.getInt16(
+                dataIndex + fieldSize * fieldIndex + fieldElementSize * 2,
+                Endian.little) *
+            normalizationFactors[fieldIndex];
         fields[fieldIndex] = Vector3(x, y, z);
       }
 

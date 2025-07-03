@@ -14,7 +14,7 @@ class ProportionalControlBloc
   static const mvcRecordingTime = Duration(seconds: 3);
   static const progressStreamUpdateFrequency = Duration(milliseconds: 16);
 
-  static const repetitionThresholds = [0.15, 0.85];
+  static const repetitionThresholds = [0.20, 0.80];
 
   final StreamController<double> _baseValueStreamController =
       StreamController<double>.broadcast();

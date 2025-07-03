@@ -7,17 +7,19 @@ import 'package:flutter_remo/src/utils/file_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
-
 class ProportionalControlFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
-  late StreamSubscription<double> streamSubscription;
+  late StreamSubscription<double> biofeedbackStreamSubscription;
+  late StreamSubscription<int> repetitionsStreamSubscription;
 
   late IOSink fileSink;
   late String tmpFilePath;
   late Directory tmpDirectory;
   late Directory externalStorageDirectory;
 
+  int lastRepetitions = 0;
+
   static const String fileSuffix = 'feedback';
-  
+
   ProportionalControlFileBloc() : super(RemoFileInitial()) {
     on<StartRecordingBiofeedback>(_startRecording);
     on<StopRecording>(_stopRecording);
@@ -28,9 +30,10 @@ class ProportionalControlFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
 
   void _startRecording(
       StartRecordingBiofeedback event, Emitter<RemoFileState> emit) async {
+    lastRepetitions = 0;
     tmpDirectory = await getTemporaryDirectory();
     var directory = await FileUtils.getDownloadDirectory();
-    
+
     if (directory != null) {
       externalStorageDirectory = directory;
       var uuid = const Uuid();
@@ -42,19 +45,19 @@ class ProportionalControlFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
     fileSink = tmpCsvFile.openWrite();
 
     _writeHeaders(fileSink, event.baseValue, event.mvc);
-    streamSubscription = event.cyclicFeedbackStream.listen(
-      (feedback) {
-        fileSink.write(feedback);
-      },
-    );
-    
+    biofeedbackStreamSubscription = event.cyclicFeedbackStream
+        .listen((feedback) => fileSink.write("$feedback,$lastRepetitions\n"));
+
+    repetitionsStreamSubscription = event.repetitionsStream
+        .listen((repetitions) => lastRepetitions = repetitions);
+
     emit(Recording());
   }
 
   void _stopRecording(StopRecording event, Emitter<RemoFileState> emit) {
-    streamSubscription.cancel();
+    biofeedbackStreamSubscription.cancel();
     fileSink.close();
-    
+
     emit(RecordingComplete());
   }
 
@@ -66,24 +69,25 @@ class ProportionalControlFileBloc extends Bloc<RemoFileEvent, RemoFileState> {
   void _saveRecord(SaveRecord event, Emitter<RemoFileState> emit) async {
     emit(SavingRecord());
 
-    final String newFilePath = '${externalStorageDirectory.path}/${event.fileName}_$fileSuffix.csv';
-    
+    final String newFilePath =
+        '${externalStorageDirectory.path}/${event.fileName}_$fileSuffix.csv';
+
     var tmpFile = File(tmpFilePath);
     await tmpFile.copy(newFilePath);
-    
+
     emit(RecordSaved());
     emit(RemoFileReady());
   }
 
   void _reset(Reset event, Emitter<RemoFileState> emit) async {
-    streamSubscription.cancel();
+    biofeedbackStreamSubscription.cancel();
     emit(RemoFileInitial());
   }
 
   void _writeHeaders(IOSink fileSink, double baseValue, double mvc) {
-      fileSink.write("File version,Base value,MVC\n");
-      fileSink.write("1.0,$baseValue,$mvc\n");
-      fileSink.write("\n");
-      fileSink.write("Biofeedback\n");
+    fileSink.write("File version,Base value,MVC\n");
+    fileSink.write("1.0,$baseValue,$mvc\n");
+    fileSink.write("\n");
+    fileSink.write("Biofeedback,Repetitions\n");
   }
 }

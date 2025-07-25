@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_remo/flutter_remo.dart';
 
 part 'proportional_control_event.dart';
-
 part 'propotional_control_state.dart';
 
 class ProportionalControlBloc
@@ -30,12 +29,26 @@ class ProportionalControlBloc
   StreamSubscription<double>? _outputStreamSubscription;
 
   ProportionalControlBloc() : super(Inactive()) {
+    on<PrepareRecordingBaseValue>(_prepareBaseValueRecording);
     on<StartRecordingBaseValue>(_recordBaseValue);
     on<PrepareRecordingMvc>(_prepareMvc);
     on<StartRecordingMvc>(_recordMvc);
     on<PrepareProportionalControl>(_preparePropotionalControl);
     on<StartProportionalControl>(_startProportionalControl);
     on<StopOperations>(_stopOperations);
+  }
+
+  void _prepareBaseValueRecording(
+      PrepareRecordingBaseValue event, Emitter<PropotionalControlState> emit) {
+    _clearSubscriptions();
+
+    _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
+      _baseValue = (_baseValue + rmsData.emg.sum()) / 2;
+
+      _baseValueStreamController.add(_baseValue);
+    });
+
+    emit(ReadyToRecordBaseValue(_baseValueStreamController.stream));
   }
 
   void _recordBaseValue(StartRecordingBaseValue event,
@@ -68,7 +81,20 @@ class ProportionalControlBloc
   void _prepareMvc(
       PrepareRecordingMvc event, Emitter<PropotionalControlState> emit) {
     _clearSubscriptions();
-    emit(ReadyToRecordMvc());
+
+    var values = List<double>.empty(growable: true);
+
+    _rmsStreamSubscription = event.rmsDataStream.listen((rmsData) {
+      values.add(rmsData.emg.sum());
+
+      var percentile = values.percentile(95);
+      var topValues = values.where((value) => value > -percentile).toList();
+
+      _mvc = topValues.average();
+      _mvcStreamController.add(_mvc);
+    });
+
+    emit(ReadyToRecordMvc(_mvcStreamController.stream));
   }
 
   void _recordMvc(
@@ -105,7 +131,19 @@ class ProportionalControlBloc
   void _preparePropotionalControl(
       PrepareProportionalControl event, Emitter<PropotionalControlState> emit) {
     _clearSubscriptions();
-    emit(ReadyToStart());
+
+    var outputStream = event.rmsDataStream.map((rmsData) {
+      var denominator = _mvc - _baseValue;
+
+      if (denominator <= 0.0001) {
+        return 0.0;
+      }
+
+      var normalized = (rmsData.emg.sum() - _baseValue) / denominator;
+      return clampDouble(normalized, 0, 1);
+    }).asBroadcastStream();
+
+    emit(ReadyToStart(outputStream));
   }
 
   void _startProportionalControl(
